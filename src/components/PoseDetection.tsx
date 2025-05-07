@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
+// Importando explicitamente o backend WebGL
 import '@tensorflow/tfjs-backend-webgl';
 
 interface PoseDetectionProps {
@@ -15,6 +16,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [isWebcamLoading, setIsWebcamLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // Exercise state tracking
   const [isDown, setIsDown] = useState(false);
@@ -28,6 +30,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       if (!videoRef.current) return;
 
       try {
+        console.log('Tentando acessar a câmera...');
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user' },
           audio: false
@@ -38,19 +41,31 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         return new Promise<void>((resolve) => {
           if (videoRef.current) {
             videoRef.current.onloadedmetadata = () => {
+              console.log('Câmera configurada com sucesso');
               resolve();
             };
           }
         });
       } catch (error) {
-        console.error('Error accessing webcam:', error);
+        console.error('Erro ao acessar a câmera:', error);
+        setLoadError('Erro ao acessar câmera. Verifique suas permissões.');
         onFeedback('Erro ao acessar câmera. Verifique suas permissões.');
       }
     };
 
     const loadModel = async () => {
       setIsModelLoading(true);
+      
       try {
+        console.log('Inicializando o backend TensorFlow.js...');
+        // Definindo explicitamente o backend WebGL
+        const tf = await import('@tensorflow/tfjs-core');
+        const tfwebgl = await import('@tensorflow/tfjs-backend-webgl');
+        await tf.setBackend('webgl');
+        await tf.ready();
+        console.log('Backend TensorFlow.js inicializado:', tf.getBackend());
+        
+        console.log('Carregando modelo MoveNet...');
         // Use MoveNet - a lightweight and fast pose detection model
         const model = poseDetection.SupportedModels.MoveNet;
         const detectorConfig = {
@@ -59,20 +74,30 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         
         // Initialize the detector
         detectorRef.current = await poseDetection.createDetector(model, detectorConfig);
+        console.log('Modelo MoveNet carregado com sucesso');
         setIsModelLoading(false);
       } catch (error) {
-        console.error('Error loading pose detection model:', error);
+        console.error('Erro ao carregar o modelo de detecção:', error);
+        setLoadError('Erro ao carregar o modelo de detecção. Tente novamente.');
         onFeedback('Erro ao carregar o modelo de detecção. Tente novamente.');
+        setIsModelLoading(false);
       }
     };
 
     const initialize = async () => {
-      await setupCamera();
-      setIsWebcamLoading(false);
-      await loadModel();
-      
-      if (videoRef.current && canvasRef.current && detectorRef.current) {
-        startDetection();
+      try {
+        await setupCamera();
+        setIsWebcamLoading(false);
+        await loadModel();
+        
+        if (videoRef.current && canvasRef.current && detectorRef.current) {
+          console.log('Iniciando detecção de poses');
+          startDetection();
+        }
+      } catch (error) {
+        console.error('Erro durante a inicialização:', error);
+        setLoadError('Ocorreu um erro na inicialização. Tente novamente.');
+        onFeedback('Ocorreu um erro na inicialização. Tente novamente.');
       }
     };
 
@@ -112,7 +137,12 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       // Continue detection loop
       requestRef.current = requestAnimationFrame(detectPose);
     } catch (error) {
-      console.error('Error during pose detection:', error);
+      console.error('Erro durante a detecção de pose:', error);
+      onFeedback('Erro na detecção. Tente reiniciar o exercício.');
+      // Attempt to restart detection after a short delay
+      setTimeout(() => {
+        requestRef.current = requestAnimationFrame(detectPose);
+      }, 2000);
     }
   };
   
@@ -387,6 +417,25 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mb-4"></div>
           <p>{isWebcamLoading ? "Acessando câmera..." : "Carregando modelo de IA..."}</p>
+        </div>
+      )}
+
+      {/* Error overlay */}
+      {loadError && (
+        <div className="absolute inset-0 bg-red-500/20 flex flex-col items-center justify-center text-white p-4">
+          <div className="bg-red-600 p-4 rounded-lg max-w-md">
+            <p className="font-bold text-lg mb-2">Erro</p>
+            <p>{loadError}</p>
+            <button 
+              className="mt-4 bg-white text-red-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+              onClick={() => {
+                setLoadError(null);
+                window.location.reload();
+              }}
+            >
+              Tentar Novamente
+            </button>
+          </div>
         </div>
       )}
     </div>
