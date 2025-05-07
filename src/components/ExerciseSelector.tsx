@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { bicepsFlexed, body, dumbbell } from 'lucide-react';
+import { BicepsFlexed, Dumbbell } from 'lucide-react';
+import { User } from 'lucide-react';  // Replacing 'body' with 'User' icon
 
 interface ExerciseOption {
   id: string;
@@ -20,19 +21,19 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({ onSelectExercise })
       id: 'squat',
       name: 'Agachamento',
       description: 'Posicione seus pés na largura dos ombros e agache mantendo a postura reta.',
-      icon: <body className="h-12 w-12 text-formfit-blue" />
+      icon: <User className="h-12 w-12 text-formfit-blue" />
     },
     {
       id: 'push-up',
       name: 'Flexão de Braço',
       description: 'Mantenha o corpo alinhado e dobre os cotovelos para descer.',
-      icon: <bicepsFlexed className="h-12 w-12 text-formfit-purple" />
+      icon: <BicepsFlexed className="h-12 w-12 text-formfit-purple" />
     },
     {
       id: 'biceps-curl',
       name: 'Rosca Bíceps',
       description: 'Segure pesos leves e dobre os cotovelos para trabalhar os bíceps.',
-      icon: <dumbbell className="h-12 w-12 text-formfit-pink" />
+      icon: <Dumbbell className="h-12 w-12 text-formfit-pink" />
     }
   ];
 
