@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -24,6 +23,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   const keypointsRef = useRef<any[]>([]);
   const detectorRef = useRef<poseDetection.PoseDetector | null>(null);
   const requestRef = useRef<number | null>(null);
+  const frameCountRef = useRef<number>(0);
 
   useEffect(() => {
     const setupCamera = async () => {
@@ -261,50 +261,50 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
     const rightKnee = keypoints['right_knee'];
     const rightAnkle = keypoints['right_ankle'];
     
-    if (leftHip?.score && leftKnee?.score && leftAnkle?.score && 
-        leftHip.score > 0.5 && leftKnee.score > 0.5 && leftAnkle.score > 0.5) {
-      
+    // Verificar se os pontos necessários foram detectados com confiança
+    const hasGoodVisibility = leftHip?.score > 0.5 && leftKnee?.score > 0.5 && leftAnkle?.score > 0.5 && 
+                           rightHip?.score > 0.5 && rightKnee?.score > 0.5 && rightAnkle?.score > 0.5;
+    
+    if (hasGoodVisibility) {
+      // Calcular ângulos dos joelhos
       const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
       const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
       
-      // Average of both knee angles for more stability
+      // Média dos ângulos para maior estabilidade
       const kneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+      console.log("Ângulo do joelho:", kneeAngle);
       
-      // Check if person is in squat position (knees bent)
-      if (kneeAngle < 110 && !isDown) {
-        setIsDown(true);
-        onFeedback('Posição baixa! Mantenha a coluna reta.');
+      // Detecção de posição agachada (ângulo menor indica joelhos dobrados)
+      if (kneeAngle < 120 && !isDown) {
+        // Incrementar o contador de frames para confirmar posição
+        frameCountRef.current += 1;
         
-        // Check if back is straight
-        const shoulderMidpoint = {
-          x: (keypoints['left_shoulder'].x + keypoints['right_shoulder'].x) / 2,
-          y: (keypoints['left_shoulder'].y + keypoints['right_shoulder'].y) / 2
-        };
+        // Só registre como agachamento após alguns frames na posição
+        if (frameCountRef.current > 5) {
+          setIsDown(true);
+          frameCountRef.current = 0;
+          onFeedback('Posição baixa! Mantenha a coluna reta.');
+          console.log("Posição baixa detectada!");
+        }
+      } 
+      // Detecção de retorno à posição em pé
+      else if (kneeAngle > 150 && isDown) {
+        // Incrementar contador de frames para confirmar posição
+        frameCountRef.current += 1;
         
-        const hipMidpoint = {
-          x: (keypoints['left_hip'].x + keypoints['right_hip'].x) / 2,
-          y: (keypoints['left_hip'].y + keypoints['right_hip'].y) / 2
-        };
-        
-        const kneesMidpoint = {
-          x: (keypoints['left_knee'].x + keypoints['right_knee'].x) / 2,
-          y: (keypoints['left_knee'].y + keypoints['right_knee'].y) / 2
-        };
-        
-        // Check if these three points are roughly aligned
-        const backAlignment = Math.abs((shoulderMidpoint.x - hipMidpoint.x) / (hipMidpoint.x - kneesMidpoint.x));
-        
-        if (backAlignment > 1.3) {
-          onFeedback('Corrija sua postura! Mantenha as costas retas.');
+        // Só registre como finalizado após alguns frames na posição
+        if (frameCountRef.current > 5) {
+          setIsDown(false);
+          setRepInProgress(true);
+          frameCountRef.current = 0;
+          onFeedback('Boa! Continue assim.');
+          onRepetitionCount();
+          console.log("Repetição concluída!");
         }
       }
-      
-      // Check if person is back in standing position
-      else if (kneeAngle > 160 && isDown) {
-        setIsDown(false);
-        setRepInProgress(true);
-        onFeedback('Boa! Continue assim.');
-        onRepetitionCount();
+      // Reset contador se não estiver nas posições de transição
+      else if ((kneeAngle >= 120 && !isDown) || (kneeAngle <= 150 && isDown)) {
+        frameCountRef.current = 0;
       }
     }
   };

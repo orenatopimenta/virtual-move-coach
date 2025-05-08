@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import FormFitHeader from '@/components/FormFitHeader';
@@ -44,6 +43,7 @@ const Workout: React.FC = () => {
 
   const handleRepetitionCounted = () => {
     setRepetitions(prev => prev + 1);
+    console.log("Repetição contabilizada!");
   };
 
   const handleFeedback = (message: string) => {
