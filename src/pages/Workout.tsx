@@ -42,17 +42,17 @@ const Workout: React.FC = () => {
     });
   };
 
-  // Função de callback para contabilizar repetições - melhorada com mais logs
+  // Função de callback para contabilizar repetições - melhorada com mais logs e toast mais curto
   const handleRepetitionCounted = () => {
     console.log("🏋️ Repetição contabilizada no Workout.tsx!");
     setRepetitions(prev => {
       const newValue = prev + 1;
       console.log("🔢 Atualizando contagem para:", newValue);
-      // Adicionar um toast para confirmação visual
+      // Toast mais rápido para feedback imediato
       toast({
-        title: "Repetição contabilizada!",
-        description: `Total de repetições: ${newValue}`,
-        duration: 1500,
+        title: "🏋️ Repetição!",
+        description: `Repetição #${newValue} contabilizada`,
+        duration: 1000, // Toast mais rápido para não atrapalhar
       });
       return newValue;
     });
