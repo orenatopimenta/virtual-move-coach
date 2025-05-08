@@ -28,8 +28,12 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   const prevKneeAngleRef = useRef<number>(180);
   const repCountDebounceRef = useRef<boolean>(false);
   
-  // Visual feedback for squat
+  // Visual feedback for squat - IMPORTANTE: aumentando a reatividade
   const [squatDetected, setSquatDetected] = useState(false);
+  // Novo estado para feedback visual da qualidade de detecção
+  const [detectionQuality, setDetectionQuality] = useState<'poor' | 'good' | 'excellent'>('poor');
+  // Contador de frames com boa detecção
+  const goodDetectionFramesRef = useRef<number>(0);
 
   useEffect(() => {
     const setupCamera = async () => {
@@ -203,14 +207,21 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       const startKeypoint = keypointDict[start];
       const endKeypoint = keypointDict[end];
       
+      // MUITO MAIS SENSÍVEL: Reduzindo o limiar de confiança para TODAS as partes
       if (startKeypoint && endKeypoint && startKeypoint.score && endKeypoint.score && 
-          startKeypoint.score > 0.3 && endKeypoint.score > 0.3) {
+          startKeypoint.score > 0.2 && endKeypoint.score > 0.2) {
         
-        // Special coloring for leg connections when squatting
+        // Cores especiais para as pernas durante agachamento - MAIS VIVO
         if ((start.includes('knee') || end.includes('knee') || 
              start.includes('ankle') || end.includes('ankle') || 
              start.includes('hip')) && squatDetected) {
-          ctx.strokeStyle = '#ff0000';
+          ctx.strokeStyle = '#ea384c'; // Vermelho mais vivo
+          ctx.lineWidth = 6; // Mais grosso
+        } else if (start.includes('knee') || end.includes('knee') || 
+                  start.includes('ankle') || end.includes('ankle') || 
+                  start.includes('hip')) {
+          // Coloração especial para os membros inferiores MESMO QUANDO NÃO AGACHADO
+          ctx.strokeStyle = '#0EA5E9'; // Azul oceânico
           ctx.lineWidth = 5;
         } else {
           ctx.strokeStyle = '#4361EE';
@@ -224,45 +235,62 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       }
     });
     
-    // Draw individual keypoints
+    // Draw individual keypoints with improved visibility
     keypoints.forEach(keypoint => {
-      // Reduced confidence threshold for lower body parts to make detection more sensitive
+      // MUITO MAIS SENSÍVEL: Reduzindo drasticamente o limiar para as pernas
       const confidenceThreshold = keypoint.name?.includes('knee') || 
-                                 keypoint.name?.includes('ankle') || 
-                                 keypoint.name?.includes('hip') ? 0.3 : 0.5;
+                               keypoint.name?.includes('ankle') || 
+                               keypoint.name?.includes('hip') ? 0.2 : 0.4;
       
       if (keypoint.score && keypoint.score > confidenceThreshold) {
-        // Change color of leg keypoints when squatting is detected
+        // Pontos mais destacados para as pernas - MUITO MAIS VISÍVEIS
         if ((keypoint.name?.includes('knee') || 
              keypoint.name?.includes('ankle') || 
-             keypoint.name?.includes('hip')) && squatDetected) {
-          ctx.fillStyle = '#FF0000';
-          ctx.beginPath();
-          ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI); // Larger points for leg joints
-          ctx.fill();
+             keypoint.name?.includes('hip'))) {
           
-          // Add label for knee angle if it's a knee
-          if (keypoint.name?.includes('knee') && exercise === 'Agachamento') {
-            const keypointDict: {[key: string]: poseDetection.Keypoint} = {};
-            keypoints.forEach(kp => {
-              keypointDict[kp.name as string] = kp;
-            });
+          if (squatDetected) {
+            // Vermelho VIVO quando agachado
+            ctx.fillStyle = '#ea384c';
+            ctx.beginPath();
+            ctx.arc(keypoint.x, keypoint.y, 10, 0, 2 * Math.PI); // Pontos MAIORES
+            ctx.fill();
             
+            // Contorno branco para destacar mais
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else {
+            // Azul mais vibrante para membros inferiores quando não agachado
+            ctx.fillStyle = '#0EA5E9';
+            ctx.beginPath();
+            ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+          
+          // Adicionar etiqueta para ângulo do joelho
+          if (keypoint.name?.includes('knee') && exercise === 'Agachamento') {
             const leftHip = keypointDict['left_hip'];
             const leftKnee = keypointDict['left_knee'];
             const leftAnkle = keypointDict['left_ankle'];
             
             if (leftHip && leftKnee && leftAnkle && leftHip.score && 
                 leftKnee.score && leftAnkle.score && 
-                leftHip.score > 0.3 && leftKnee.score > 0.3 && leftAnkle.score > 0.3) {
+                leftHip.score > 0.2 && leftKnee.score > 0.2 && leftAnkle.score > 0.2) {
               const kneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
               
+              // Texto mais visível
               ctx.fillStyle = "#FFFFFF";
-              ctx.font = "14px Arial";
+              ctx.strokeStyle = "#000000";
+              ctx.lineWidth = 3;
+              ctx.font = "bold 16px Arial";
+              
+              // Desenhar sombra para o texto
+              ctx.strokeText(`${Math.round(kneeAngle)}°`, leftKnee.x + 15, leftKnee.y);
               ctx.fillText(`${Math.round(kneeAngle)}°`, leftKnee.x + 15, leftKnee.y);
             }
           }
         } else {
+          // Outras partes do corpo
           ctx.fillStyle = '#F72585';
           ctx.beginPath();
           ctx.arc(keypoint.x, keypoint.y, 6, 0, 2 * Math.PI);
@@ -270,6 +298,31 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         }
       }
     });
+    
+    // Adicionar um indicador visual da qualidade da detecção
+    const qualityColors = {
+      poor: '#FF0000',
+      good: '#FFFF00',
+      excellent: '#00FF00'
+    };
+    
+    // Indicador de qualidade no canto superior
+    ctx.fillStyle = qualityColors[detectionQuality];
+    ctx.font = "bold 18px Arial";
+    ctx.fillText(`Qualidade: ${detectionQuality === 'poor' ? 'Ruim' : 
+                              detectionQuality === 'good' ? 'Boa' : 'Excelente'}`, 20, 30);
+    
+    // Indicador visual grande de agachamento
+    if (squatDetected) {
+      ctx.fillStyle = 'rgba(234, 56, 76, 0.7)'; // Vermelho semi-transparente
+      ctx.font = "bold 36px Arial";
+      ctx.fillText("AGACHAMENTO DETECTADO!", canvas.width/2 - 250, 60);
+      
+      // Borda para destacar o texto
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.strokeText("AGACHAMENTO DETECTADO!", canvas.width/2 - 250, 60);
+    }
   };
   
   const processPoseForExercise = (keypoints: poseDetection.Keypoint[]) => {
@@ -316,100 +369,123 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
     const rightKnee = keypoints['right_knee'];
     const rightAnkle = keypoints['right_ankle'];
     
-    // Verificar se os pontos necessários foram detectados com confiança reduzida
-    const hasGoodVisibility = leftHip?.score > 0.3 && leftKnee?.score > 0.3 && leftAnkle?.score > 0.3 && 
-                           rightHip?.score > 0.3 && rightKnee?.score > 0.3 && rightAnkle?.score > 0.3;
+    // Verificar qualidade de detecção - limiar muito mais baixo para membros inferiores
+    const hasGoodVisibility = leftHip?.score > 0.2 && leftKnee?.score > 0.2 && leftAnkle?.score > 0.2 && 
+                           rightHip?.score > 0.2 && rightKnee?.score > 0.2 && rightAnkle?.score > 0.2;
     
-    if (hasGoodVisibility) {
-      // Calcular ângulos dos joelhos
-      const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
-      const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+    // Mostrar qualidade da detecção para ajudar o usuário
+    if (leftHip?.score && leftKnee?.score && leftAnkle?.score) {
+      const avgScore = (leftHip.score + leftKnee.score + leftAnkle.score) / 3;
       
-      // Média dos ângulos para maior estabilidade
-      const kneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+      // Log com scores exatos para debugging
+      console.log(`Scores de detecção: Quadril=${leftHip.score.toFixed(2)}, Joelho=${leftKnee.score.toFixed(2)}, Tornozelo=${leftAnkle.score.toFixed(2)}, Média=${avgScore.toFixed(2)}`);
+      
+      if (avgScore < 0.3) {
+        setDetectionQuality('poor');
+        goodDetectionFramesRef.current = 0;
+      } else if (avgScore < 0.5) {
+        setDetectionQuality('good');
+        // Incrementa contador de frames com boa detecção
+        goodDetectionFramesRef.current += 1;
+        
+        // Atualiza o feedback após alguns frames com boa detecção
+        if (goodDetectionFramesRef.current > 5 && goodDetectionFramesRef.current % 10 === 0) {
+          onFeedback('Posição melhorando! Continue ajustando para visibilidade ideal.');
+        }
+      } else {
+        setDetectionQuality('excellent');
+        // Incrementa contador de frames com boa detecção
+        goodDetectionFramesRef.current += 1;
+        
+        // Atualiza o feedback após alguns frames com boa detecção
+        if (goodDetectionFramesRef.current === 10) {
+          onFeedback('Excelente posição! Suas pernas estão claramente visíveis.');
+        }
+      }
+    }
+    
+    // Mesmo com visibilidade ruim, tentar analisar - MUITO MAIS PERMISSIVO
+    if (leftHip && leftKnee && leftAnkle) {
+      // Calcular ângulos dos joelhos - usar apenas o lado esquerdo se necessário
+      const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+      let kneeAngle = leftKneeAngle;
+      
+      // Se o lado direito também estiver visível, calcular a média
+      if (rightHip && rightKnee && rightAnkle) {
+        const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+        kneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+      }
       
       // Guarde o ângulo atual para comparação
       const prevAngle = prevKneeAngleRef.current;
       prevKneeAngleRef.current = kneeAngle;
       
-      // LIMIAR DE DETECÇÃO AINDA MAIS SENSÍVEL
-      // Log detalhado para debugging
-      console.log(`ANÁLISE DE AGACHAMENTO - Ângulo do joelho: ${kneeAngle.toFixed(1)}, isDown: ${isDown}, squatDetected: ${squatDetected}, frameCount: ${frameCountRef.current}`);
+      // Log detalhado para análise
+      console.log(`ANÁLISE DE AGACHAMENTO - Ângulo atual: ${kneeAngle.toFixed(1)}°, Ângulo anterior: ${prevAngle.toFixed(1)}°, isDown: ${isDown}, squatDetected: ${squatDetected}`);
       
-      // Detecção de posição agachada - ângulo bem menor para mais sensibilidade
-      if (kneeAngle < 120 && !isDown && !repCountDebounceRef.current) {
-        // Atualização visual imediata quando detectar uma dobra significativa do joelho
+      // ALTAMENTE SENSÍVEL - detectar qualquer dobra significativa do joelho
+      // Detecção de posição agachada - muito mais sensível (ângulo até 145°)
+      if (kneeAngle < 145 && !isDown && !repCountDebounceRef.current) {
+        // Atualização visual imediata
         setSquatDetected(true);
         
-        // Log de detecção
-        console.log(`DETECÇÃO: Possível agachamento em progresso - Ângulo: ${kneeAngle.toFixed(1)}`);
+        console.log(`🔍 DETECTADO: Possível agachamento iniciado - Ângulo: ${kneeAngle.toFixed(1)}°`);
         
-        // Incrementar o contador de frames para confirmar posição - reduzido ainda mais
-        frameCountRef.current += 1;
-        
-        // Só registre como agachamento após menos frames na posição
-        if (frameCountRef.current > 1) { // Reduzido para apenas 1 frame de confirmação
-          console.log(`🔴 POSIÇÃO BAIXA CONFIRMADA! Ângulo: ${kneeAngle.toFixed(1)}`);
-          setIsDown(true);
-          frameCountRef.current = 0;
-          onFeedback('Posição baixa detectada! Continue...');
-        }
+        // MUITO MAIS REATIVO: Não precisa confirmar com frames adicionais
+        console.log(`🔴 POSIÇÃO BAIXA IMEDIATAMENTE CONFIRMADA! Ângulo: ${kneeAngle.toFixed(1)}°`);
+        setIsDown(true);
+        frameCountRef.current = 0;
+        onFeedback('Agachamento detectado! Mantenha a posição...');
       } 
-      // Detecção de retorno à posição em pé - limiar reduzido para ser mais sensível
-      else if (kneeAngle > 135 && isDown && !repCountDebounceRef.current) {
-        // Incrementar contador de frames para confirmar posição
-        frameCountRef.current += 1;
+      // Detecção de retorno à posição em pé - muito mais sensível
+      else if (kneeAngle > 160 && isDown && !repCountDebounceRef.current) {
+        console.log(`🟢 REPETIÇÃO IMEDIATAMENTE CONCLUÍDA! Ângulo: ${kneeAngle.toFixed(1)}°`);
+        setIsDown(false);
+        setSquatDetected(false);
+        setRepInProgress(false);
+        frameCountRef.current = 0;
         
-        // Só registre como finalizado após poucos frames na posição
-        if (frameCountRef.current > 1) { // Reduzido para apenas 1 frame de confirmação
-          console.log(`🟢 REPETIÇÃO CONCLUÍDA! CONTABILIZANDO... Ângulo: ${kneeAngle.toFixed(1)}`);
-          setIsDown(false);
-          setSquatDetected(false); // Reset do estado visual
-          setRepInProgress(false);
-          frameCountRef.current = 0;
-          
-          // Evitar contagens múltiplas com debounce
-          repCountDebounceRef.current = true;
-          
-          // Informar que uma repetição foi concluída
-          onFeedback('Boa! Repetição contabilizada.');
-          onRepetitionCount();
-          
-          // Teste direto da função de callback para verificar se está funcionando
-          console.log("Chamando callback de repetição");
-          
-          // Resetar o debounce após um tempo - diminuido para permitir repetições mais rápidas
-          setTimeout(() => {
-            repCountDebounceRef.current = false;
-            console.log("Debounce resetado, pronto para nova repetição");
-          }, 500);
-        }
+        // Evitar contagens múltiplas com debounce mais curto
+        repCountDebounceRef.current = true;
+        
+        // Informar que uma repetição foi concluída
+        onFeedback('Boa! Repetição contabilizada.');
+        onRepetitionCount();
+        
+        console.log("🎯 Chamando callback de repetição - contabilizando agachamento");
+        
+        // Resetar o debounce mais rápido
+        setTimeout(() => {
+          repCountDebounceRef.current = false;
+          console.log("⏱️ Debounce resetado, pronto para nova repetição");
+        }, 300);
       }
       // Se estiver no meio do agachamento, manter o estado visual
-      else if (kneeAngle < 135 && kneeAngle > 90) {
+      else if (kneeAngle < 150) {
         setSquatDetected(true);
       }
-      // Se não estiver agachado ou com o joelho muito flexionado, resetar visual
-      else if (kneeAngle > 150) {
+      // Se o joelho estiver praticamente esticado, resetar visual
+      else if (kneeAngle > 165) {
         setSquatDetected(false);
       }
-      // Reset do contador se não estiver nas posições de transição
-      else if ((kneeAngle >= 120 && !isDown) || (kneeAngle <= 135 && isDown)) {
-        frameCountRef.current = 0;
-      }
     } else {
-      // Log quando não há boa visibilidade dos pontos-chave
-      console.log("Visibilidade insuficiente dos pontos-chave para análise de agachamento");
+      // Feedback mais detalhado quando não há boa detecção
+      console.log("⚠️ Visibilidade insuficiente dos pontos-chave");
       const visibilityDetails = {
-        leftHip: leftHip?.score?.toFixed(2),
-        leftKnee: leftKnee?.score?.toFixed(2),
-        leftAnkle: leftAnkle?.score?.toFixed(2),
-        rightHip: rightHip?.score?.toFixed(2),
-        rightKnee: rightKnee?.score?.toFixed(2),
-        rightAnkle: rightAnkle?.score?.toFixed(2)
+        leftHip: leftHip?.score?.toFixed(2) || "não detectado",
+        leftKnee: leftKnee?.score?.toFixed(2) || "não detectado",
+        leftAnkle: leftAnkle?.score?.toFixed(2) || "não detectado",
+        rightHip: rightHip?.score?.toFixed(2) || "não detectado",
+        rightKnee: rightKnee?.score?.toFixed(2) || "não detectado",
+        rightAnkle: rightAnkle?.score?.toFixed(2) || "não detectado"
       };
       console.log("Detalhes de visibilidade:", visibilityDetails);
-      onFeedback('Posicione-se melhor para que eu possa ver suas pernas completamente.');
+      
+      // Feedback apenas se a qualidade estiver ruim por vários frames
+      if (detectionQuality === 'poor' && frameCountRef.current % 30 === 0) {
+        onFeedback('Afaste-se um pouco da câmera para que eu possa ver suas pernas completamente.');
+      }
+      frameCountRef.current += 1;
     }
   };
   
@@ -543,10 +619,25 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         </div>
       )}
       
-      {/* Visual squat indicator */}
+      {/* Visual squat indicator - MAIS VISÍVEL */}
       {squatDetected && (
-        <div className="absolute bottom-4 left-4 bg-red-500 px-3 py-1 rounded-full text-white text-sm font-bold animate-pulse">
-          Agachamento Detectado
+        <div className="absolute bottom-4 left-4 bg-red-500 px-4 py-2 rounded-full text-white text-base font-bold animate-pulse shadow-lg">
+          Agachamento Detectado!
+        </div>
+      )}
+      
+      {/* Novo indicador de qualidade de detecção */}
+      <div className={`absolute top-4 left-4 px-4 py-2 rounded-full text-white text-base font-bold 
+                      ${detectionQuality === 'poor' ? 'bg-red-500' : 
+                        detectionQuality === 'good' ? 'bg-yellow-500' : 'bg-green-500'}`}>
+        Detecção: {detectionQuality === 'poor' ? 'Ruim' : 
+                 detectionQuality === 'good' ? 'Boa' : 'Excelente'}
+      </div>
+      
+      {/* Instrução de posicionamento */}
+      {detectionQuality === 'poor' && (
+        <div className="absolute top-4 right-4 bg-blue-500 px-4 py-2 rounded-lg text-white text-sm font-bold animate-bounce">
+          Afaste-se um pouco para a câmera ver suas pernas completas
         </div>
       )}
     </div>

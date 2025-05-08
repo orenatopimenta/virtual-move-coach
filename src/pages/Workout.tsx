@@ -31,6 +31,7 @@ const Workout: React.FC = () => {
     toast({
       title: "Análise iniciada",
       description: "Posicione-se na frente da câmera e comece o exercício.",
+      duration: 3000, // Toast mais rápido para não atrapalhar
     });
   };
 
@@ -39,6 +40,7 @@ const Workout: React.FC = () => {
     toast({
       title: "Análise pausada",
       description: "Você pode retomar quando estiver pronto.",
+      duration: 3000,
     });
   };
 
@@ -48,17 +50,20 @@ const Workout: React.FC = () => {
     setRepetitions(prev => {
       const newValue = prev + 1;
       console.log("🔢 Atualizando contagem para:", newValue);
-      // Toast mais rápido para feedback imediato
+      
+      // Toast mais destacado e rápido para feedback imediato
       toast({
         title: "🏋️ Repetição!",
         description: `Repetição #${newValue} contabilizada`,
-        duration: 1000, // Toast mais rápido para não atrapalhar
+        duration: 1000, // Toast muito rápido
+        variant: "default", // Alterado para default para mais destaque
       });
       return newValue;
     });
   };
 
   const handleFeedback = (message: string) => {
+    console.log("🗨️ Feedback recebido:", message);
     setFeedback(message);
   };
 
@@ -107,16 +112,18 @@ const Workout: React.FC = () => {
                   <Button 
                     onClick={handleStartAnalysis}
                     className="bg-formfit-blue hover:bg-formfit-blue/90"
+                    size="lg"
                   >
-                    <Play className="mr-2 h-4 w-4" />
+                    <Play className="mr-2 h-5 w-5" />
                     Iniciar
                   </Button>
                 ) : (
                   <Button 
                     onClick={handleStopAnalysis}
                     variant="outline"
+                    size="lg"
                   >
-                    <Pause className="mr-2 h-4 w-4" />
+                    <Pause className="mr-2 h-5 w-5" />
                     Pausar
                   </Button>
                 )}
@@ -129,7 +136,7 @@ const Workout: React.FC = () => {
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md">
                   <h3 className="text-xl font-bold mb-2">Feedback</h3>
-                  <div className={`text-lg ${feedback?.includes('Correto') || feedback?.includes('Boa!') ? 'text-green-500' : 'text-amber-500'}`}>
+                  <div className={`text-lg ${feedback?.includes('Correto') || feedback?.includes('Boa!') || feedback?.includes('Excelente') ? 'text-green-500' : feedback?.includes('Ruim') || feedback?.includes('Afaste') ? 'text-amber-500' : 'text-blue-500'}`}>
                     {feedback || "Aguardando..."}
                   </div>
                 </div>
