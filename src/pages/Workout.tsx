@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import FormFitHeader from '@/components/FormFitHeader';
@@ -42,8 +43,12 @@ const Workout: React.FC = () => {
   };
 
   const handleRepetitionCounted = () => {
-    setRepetitions(prev => prev + 1);
-    console.log("Repetição contabilizada!");
+    console.log("Repetição contabilizada no Workout.tsx!");
+    setRepetitions(prev => {
+      const newValue = prev + 1;
+      console.log("Atualizando contagem para:", newValue);
+      return newValue;
+    });
   };
 
   const handleFeedback = (message: string) => {
@@ -117,7 +122,7 @@ const Workout: React.FC = () => {
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md">
                   <h3 className="text-xl font-bold mb-2">Feedback</h3>
-                  <div className={`text-lg ${feedback?.includes('Correto') ? 'text-green-500' : 'text-amber-500'}`}>
+                  <div className={`text-lg ${feedback?.includes('Correto') || feedback?.includes('Boa!') ? 'text-green-500' : 'text-amber-500'}`}>
                     {feedback || "Aguardando..."}
                   </div>
                 </div>

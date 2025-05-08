@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -24,6 +25,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   const detectorRef = useRef<poseDetection.PoseDetector | null>(null);
   const requestRef = useRef<number | null>(null);
   const frameCountRef = useRef<number>(0);
+  const prevKneeAngleRef = useRef<number>(180);
+  const repCountDebounceRef = useRef<boolean>(false);
 
   useEffect(() => {
     const setupCamera = async () => {
@@ -272,38 +275,53 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       
       // Média dos ângulos para maior estabilidade
       const kneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
-      console.log("Ângulo do joelho:", kneeAngle);
+      
+      // Guarde o ângulo atual para comparação
+      const prevAngle = prevKneeAngleRef.current;
+      prevKneeAngleRef.current = kneeAngle;
+      
+      console.log("Ângulo do joelho:", kneeAngle, "isDown:", isDown, "frameCount:", frameCountRef.current, "repCountDebounce:", repCountDebounceRef.current);
       
       // Detecção de posição agachada (ângulo menor indica joelhos dobrados)
-      if (kneeAngle < 120 && !isDown) {
+      if (kneeAngle < 110 && !isDown && !repCountDebounceRef.current) {
         // Incrementar o contador de frames para confirmar posição
         frameCountRef.current += 1;
         
         // Só registre como agachamento após alguns frames na posição
-        if (frameCountRef.current > 5) {
+        if (frameCountRef.current > 3) {
+          console.log("POSIÇÃO BAIXA DETECTADA!");
           setIsDown(true);
           frameCountRef.current = 0;
           onFeedback('Posição baixa! Mantenha a coluna reta.');
-          console.log("Posição baixa detectada!");
         }
       } 
       // Detecção de retorno à posição em pé
-      else if (kneeAngle > 150 && isDown) {
+      else if (kneeAngle > 150 && isDown && !repCountDebounceRef.current) {
         // Incrementar contador de frames para confirmar posição
         frameCountRef.current += 1;
         
         // Só registre como finalizado após alguns frames na posição
-        if (frameCountRef.current > 5) {
+        if (frameCountRef.current > 3) {
+          console.log("REPETIÇÃO CONCLUÍDA! CONTABILIZANDO...");
           setIsDown(false);
-          setRepInProgress(true);
+          setRepInProgress(false);
           frameCountRef.current = 0;
+          
+          // Evitar contagens múltiplas com debounce
+          repCountDebounceRef.current = true;
+          
+          // Informar que uma repetição foi concluída
           onFeedback('Boa! Continue assim.');
           onRepetitionCount();
-          console.log("Repetição concluída!");
+          
+          // Resetar o debounce após um tempo
+          setTimeout(() => {
+            repCountDebounceRef.current = false;
+          }, 1000);
         }
       }
-      // Reset contador se não estiver nas posições de transição
-      else if ((kneeAngle >= 120 && !isDown) || (kneeAngle <= 150 && isDown)) {
+      // Reset do contador se não estiver nas posições de transição
+      else if ((kneeAngle >= 110 && !isDown) || (kneeAngle <= 150 && isDown)) {
         frameCountRef.current = 0;
       }
     }
@@ -443,3 +461,4 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
 };
 
 export default PoseDetection;
+
