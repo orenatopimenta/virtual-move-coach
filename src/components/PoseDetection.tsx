@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -280,29 +279,31 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       const prevAngle = prevKneeAngleRef.current;
       prevKneeAngleRef.current = kneeAngle;
       
-      console.log("Ângulo do joelho:", kneeAngle, "isDown:", isDown, "frameCount:", frameCountRef.current, "repCountDebounce:", repCountDebounceRef.current);
+      // Log mais detalhado para debugging
+      console.log("ANÁLISE DE AGACHAMENTO - Ângulo do joelho:", kneeAngle.toFixed(1), "isDown:", isDown, "frameCount:", frameCountRef.current, "debounce:", repCountDebounceRef.current);
       
-      // Detecção de posição agachada (ângulo menor indica joelhos dobrados)
-      if (kneeAngle < 110 && !isDown && !repCountDebounceRef.current) {
-        // Incrementar o contador de frames para confirmar posição
+      // AJUSTES PRINCIPAIS: Mudança nos limiares de detecção para ser mais sensível
+      // Detecção de posição agachada - ângulo menor para detectar dobras de joelho menores
+      if (kneeAngle < 130 && !isDown && !repCountDebounceRef.current) {
+        // Incrementar o contador de frames para confirmar posição - reduzido para ser mais responsivo
         frameCountRef.current += 1;
         
-        // Só registre como agachamento após alguns frames na posição
-        if (frameCountRef.current > 3) {
-          console.log("POSIÇÃO BAIXA DETECTADA!");
+        // Só registre como agachamento após menos frames na posição
+        if (frameCountRef.current > 2) {
+          console.log("🔴 POSIÇÃO BAIXA DETECTADA! Ângulo:", kneeAngle.toFixed(1));
           setIsDown(true);
           frameCountRef.current = 0;
-          onFeedback('Posição baixa! Mantenha a coluna reta.');
+          onFeedback('Posição baixa detectada! Continue...');
         }
       } 
-      // Detecção de retorno à posição em pé
-      else if (kneeAngle > 150 && isDown && !repCountDebounceRef.current) {
+      // Detecção de retorno à posição em pé - limiar reduzido para ser mais sensível
+      else if (kneeAngle > 140 && isDown && !repCountDebounceRef.current) {
         // Incrementar contador de frames para confirmar posição
         frameCountRef.current += 1;
         
-        // Só registre como finalizado após alguns frames na posição
-        if (frameCountRef.current > 3) {
-          console.log("REPETIÇÃO CONCLUÍDA! CONTABILIZANDO...");
+        // Só registre como finalizado após poucos frames na posição
+        if (frameCountRef.current > 2) {
+          console.log("🟢 REPETIÇÃO CONCLUÍDA! CONTABILIZANDO... Ângulo:", kneeAngle.toFixed(1));
           setIsDown(false);
           setRepInProgress(false);
           frameCountRef.current = 0;
@@ -311,19 +312,27 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
           repCountDebounceRef.current = true;
           
           // Informar que uma repetição foi concluída
-          onFeedback('Boa! Continue assim.');
+          onFeedback('Boa! Repetição contabilizada.');
           onRepetitionCount();
           
-          // Resetar o debounce após um tempo
+          // Teste direto da função de callback para verificar se está funcionando
+          console.log("Chamando callback de repetição");
+          
+          // Resetar o debounce após um tempo - diminuido para permitir repetições mais rápidas
           setTimeout(() => {
             repCountDebounceRef.current = false;
-          }, 1000);
+            console.log("Debounce resetado, pronto para nova repetição");
+          }, 800);
         }
       }
       // Reset do contador se não estiver nas posições de transição
-      else if ((kneeAngle >= 110 && !isDown) || (kneeAngle <= 150 && isDown)) {
+      else if ((kneeAngle >= 130 && !isDown) || (kneeAngle <= 140 && isDown)) {
         frameCountRef.current = 0;
       }
+    } else {
+      // Log quando não há boa visibilidade dos pontos-chave
+      console.log("Visibilidade insuficiente dos pontos-chave para análise de agachamento");
+      onFeedback('Não estou conseguindo ver bem suas pernas. Ajuste a posição.');
     }
   };
   
@@ -461,4 +470,3 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
 };
 
 export default PoseDetection;
-
