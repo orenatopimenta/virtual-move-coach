@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -27,7 +28,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   
   const keypointsRef = useRef<any[]>([]);
   const detectorRef = useRef<poseDetection.PoseDetector | null>(null);
-  const requestRef = useRef<number | ReturnType<typeof setTimeout> | null>(null);
+  const requestRef = useRef<number | NodeJS.Timeout | null>(null);
   const frameCountRef = useRef<number>(0);
   const prevKneeAngleRef = useRef<number>(180);
   const repCountDebounceRef = useRef<boolean>(false);
@@ -164,8 +165,12 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       }
       
       // Continue detection loop with lower FPS for better performance
+      // Fix: Explicitly handle the NodeJS.Timeout type
       requestRef.current = setTimeout(() => {
-        requestAnimationFrame(detectPose);
+        if (requestRef.current && typeof requestRef.current !== 'number') {
+          clearTimeout(requestRef.current);
+        }
+        requestRef.current = requestAnimationFrame(detectPose);
       }, 1000/24); // Targeting around 24 FPS
     } catch (error) {
       console.error('Erro durante a detecção de pose:', error);
@@ -179,7 +184,11 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   
   const startDetection = () => {
     if (requestRef.current) {
-      clearTimeout(requestRef.current);
+      if (typeof requestRef.current === 'number') {
+        cancelAnimationFrame(requestRef.current);
+      } else {
+        clearTimeout(requestRef.current);
+      }
     }
     requestRef.current = requestAnimationFrame(detectPose);
   };
