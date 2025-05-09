@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -28,7 +27,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   
   const keypointsRef = useRef<any[]>([]);
   const detectorRef = useRef<poseDetection.PoseDetector | null>(null);
-  const requestRef = useRef<number | null>(null);
+  const requestRef = useRef<number | ReturnType<typeof setTimeout> | null>(null);
   const frameCountRef = useRef<number>(0);
   const prevKneeAngleRef = useRef<number>(180);
   const repCountDebounceRef = useRef<boolean>(false);

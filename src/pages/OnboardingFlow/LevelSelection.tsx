@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
 import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const LevelSelection: React.FC = () => {
