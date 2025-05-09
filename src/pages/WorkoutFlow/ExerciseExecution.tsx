@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Timer, StopCircle } from 'lucide-react';
 import EnhancedPoseDetection from '@/components/EnhancedPoseDetection';
+import ExerciseAnimation from '@/components/ExerciseAnimation';
+import WorkoutDashboard from '@/components/WorkoutDashboard';
 
 interface ExerciseData {
   id: string;
@@ -13,7 +15,7 @@ interface ExerciseData {
   muscles: string;
 }
 
-type ExerciseStage = 'setup' | 'active' | 'rest' | 'complete';
+type ExerciseStage = 'intro' | 'setup' | 'active' | 'rest' | 'complete';
 
 interface RepStats {
   total: number;
@@ -29,7 +31,7 @@ const ExerciseExecution: React.FC = () => {
   
   const [exercise, setExercise] = useState<ExerciseData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [stage, setStage] = useState<ExerciseStage>('setup');
+  const [stage, setStage] = useState<ExerciseStage>('intro'); // Starting with intro stage for animation
   const [repetitions, setRepetitions] = useState(0);
   const [series, setSeries] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -38,6 +40,7 @@ const ExerciseExecution: React.FC = () => {
   const [showCompletionFlash, setShowCompletionFlash] = useState(false);
   const [repStats, setRepStats] = useState<RepStats>({ total: 0, good: 0, average: 0, poor: 0 });
   const [feedbackType, setFeedbackType] = useState<'good' | 'average' | 'poor' | null>(null);
+  const [showDashboard, setShowDashboard] = useState(false);
   
   // Progress bar for repetitions
   const repProgress = (repetitions / 12) * 100;
@@ -67,6 +70,11 @@ const ExerciseExecution: React.FC = () => {
       if (restTimerRef.current) window.clearInterval(restTimerRef.current);
     };
   }, [exerciseId]);
+  
+  // Handle intro animation completion
+  const handleIntroComplete = () => {
+    setStage('setup');
+  };
   
   // Start time tracking when analysis begins
   useEffect(() => {
@@ -261,10 +269,22 @@ const ExerciseExecution: React.FC = () => {
     const muscleGroupId = getMuscleGroupFromExercise(exerciseId);
     navigate(`/workout/exercises/${muscleGroupId}`);
   };
+
+  const toggleDashboard = () => {
+    setShowDashboard(prev => !prev);
+  };
   
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <FormFitHeader />
+      
+      {/* Exercise Introduction Animation */}
+      {stage === 'intro' && (
+        <ExerciseAnimation 
+          exerciseId={exerciseId} 
+          onComplete={handleIntroComplete} 
+        />
+      )}
       
       {/* Flashing overlay for series completion */}
       {showCompletionFlash && (
@@ -294,7 +314,12 @@ const ExerciseExecution: React.FC = () => {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="formfit-subheading text-center">{exercise?.name}</h1>
-            <div className="w-10"></div> {/* Empty div for balance */}
+            <button
+              onClick={toggleDashboard}
+              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+            >
+              <Timer className="h-5 w-5" />
+            </button>
           </div>
           
           {/* Instagram-style progress bar */}
@@ -305,95 +330,113 @@ const ExerciseExecution: React.FC = () => {
             ></div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Exercise visualization area */}
-            <div className="aspect-video relative bg-gray-100">
-              {stage === 'setup' && !isAnalyzing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-50 text-white">
-                  <h2 className="text-2xl font-bold mb-6">Preparado para começar?</h2>
-                  <Button
-                    onClick={handleStartAnalysis}
-                    className="bg-formfit-blue hover:bg-formfit-blue/90 text-white px-8 py-6"
-                    size="lg"
-                  >
-                    Iniciar Exercício
-                  </Button>
-                </div>
-              )}
-              
-              {stage === 'rest' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-70 text-white">
-                  <h2 className="text-2xl font-bold mb-2">Descanse</h2>
-                  <div className="text-5xl font-bold mb-4">{formatTime(restTime)}</div>
-                  <p className="text-lg">Próxima série em breve</p>
-                </div>
-              )}
-              
-              {stage === 'complete' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-70 text-white p-4">
-                  <h2 className="text-2xl font-bold mb-4">Treino Finalizado!</h2>
-                  <p className="text-lg mb-2">Séries: {series}/3</p>
-                  <p className="text-lg mb-6">Repetições: {repStats.total}</p>
-                  <Button
-                    onClick={handleFinishWorkout}
-                    className="bg-green-500 hover:bg-green-600"
-                    size="lg"
-                  >
-                    Ver Resumo
-                  </Button>
-                </div>
-              )}
-              
-              {/* Pose detection component */}
-              {isAnalyzing && (
-                <EnhancedPoseDetection
-                  exercise={exercise?.id || ""}
-                  onRepetitionCount={handleRepetitionCounted}
-                  onFeedback={handleFeedback}
-                />
-              )}
+          {/* Dashboard View */}
+          {showDashboard ? (
+            <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+              <WorkoutDashboard 
+                elapsedTime={elapsedTime}
+                repStats={repStats}
+                series={series}
+              />
+              <Button
+                onClick={toggleDashboard}
+                className="w-full mt-4"
+                variant="outline"
+              >
+                Voltar ao Treino
+              </Button>
             </div>
-            
-            {/* Stats and controls */}
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <Timer className="h-5 w-5 text-formfit-blue" />
-                  <span className="font-medium">{formatTime(elapsedTime)}</span>
-                </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              {/* Exercise visualization area */}
+              <div className="aspect-video relative bg-gray-100">
+                {stage === 'setup' && !isAnalyzing && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-50 text-white">
+                    <h2 className="text-2xl font-bold mb-6">Preparado para começar?</h2>
+                    <Button
+                      onClick={handleStartAnalysis}
+                      className="bg-formfit-blue hover:bg-formfit-blue/90 text-white px-8 py-6"
+                      size="lg"
+                    >
+                      Iniciar Exercício
+                    </Button>
+                  </div>
+                )}
                 
-                <div className="px-4 py-1 bg-formfit-blue rounded-full text-white font-medium">
-                  Série {series + 1}/3
-                </div>
+                {stage === 'rest' && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-70 text-white">
+                    <h2 className="text-2xl font-bold mb-2">Descanse</h2>
+                    <div className="text-5xl font-bold mb-4">{formatTime(restTime)}</div>
+                    <p className="text-lg">Próxima série em breve</p>
+                  </div>
+                )}
                 
-                <div className="text-lg font-bold">
-                  {repetitions}/12 reps
-                </div>
+                {stage === 'complete' && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-70 text-white p-4">
+                    <h2 className="text-2xl font-bold mb-4">Treino Finalizado!</h2>
+                    <p className="text-lg mb-2">Séries: {series}/3</p>
+                    <p className="text-lg mb-6">Repetições: {repStats.total}</p>
+                    <Button
+                      onClick={handleFinishWorkout}
+                      className="bg-green-500 hover:bg-green-600"
+                      size="lg"
+                    >
+                      Ver Resumo
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Pose detection component */}
+                {isAnalyzing && (
+                  <EnhancedPoseDetection
+                    exercise={exerciseId}
+                    onRepetitionCount={handleRepetitionCounted}
+                    onFeedback={handleFeedback}
+                  />
+                )}
               </div>
               
-              {/* Feedback area */}
-              <div className={`p-3 rounded-lg mb-4 ${
-                feedback?.includes('Correto') || feedback?.includes('Boa') || feedback?.includes('Excelente') 
-                  ? 'bg-green-100 text-green-800'
-                  : feedback?.includes('Ajuste') || feedback?.includes('Razoável')
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-50 text-red-800'
-              }`}>
-                <p className="font-medium">{feedback || "Aguardando..."}</p>
+              {/* Stats and controls */}
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Timer className="h-5 w-5 text-formfit-blue" />
+                    <span className="font-medium">{formatTime(elapsedTime)}</span>
+                  </div>
+                  
+                  <div className="px-4 py-1 bg-formfit-blue rounded-full text-white font-medium">
+                    Série {series + 1}/3
+                  </div>
+                  
+                  <div className="text-lg font-bold">
+                    {repetitions}/12 reps
+                  </div>
+                </div>
+                
+                {/* Feedback area */}
+                <div className={`p-3 rounded-lg mb-4 ${
+                  feedback?.includes('Correto') || feedback?.includes('Boa') || feedback?.includes('Excelente') 
+                    ? 'bg-green-100 text-green-800'
+                    : feedback?.includes('Ajuste') || feedback?.includes('Razoável')
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-50 text-red-800'
+                }`}>
+                  <p className="font-medium">{feedback || "Aguardando..."}</p>
+                </div>
+                
+                {/* Controls */}
+                {isAnalyzing && stage === 'active' && (
+                  <Button
+                    onClick={handleStopAnalysis}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white"
+                    size="lg"
+                  >
+                    <StopCircle className="mr-2 h-5 w-5" /> Finalizar Treino
+                  </Button>
+                )}
               </div>
-              
-              {/* Controls */}
-              {isAnalyzing && stage === 'active' && (
-                <Button
-                  onClick={handleStopAnalysis}
-                  className="w-full bg-red-500 hover:bg-red-600 text-white"
-                  size="lg"
-                >
-                  <StopCircle className="mr-2 h-5 w-5" /> Finalizar Treino
-                </Button>
-              )}
             </div>
-          </div>
+          )}
         </div>
       </main>
     </div>
