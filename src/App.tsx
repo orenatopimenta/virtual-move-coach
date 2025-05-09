@@ -8,6 +8,17 @@ import Index from "./pages/Index";
 import Workout from "./pages/Workout";
 import NotFound from "./pages/NotFound";
 
+// Onboarding Flow
+import LevelSelection from "./pages/OnboardingFlow/LevelSelection";
+import UserProfile from "./pages/OnboardingFlow/UserProfile";
+import TrainingAvailability from "./pages/OnboardingFlow/TrainingAvailability";
+
+// Workout Flow
+import MuscleGroups from "./pages/WorkoutFlow/MuscleGroups";
+import ExercisesList from "./pages/WorkoutFlow/ExercisesList";
+import ExerciseExecution from "./pages/WorkoutFlow/ExerciseExecution";
+import WorkoutSummary from "./pages/WorkoutFlow/WorkoutSummary";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -19,6 +30,19 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/workout" element={<Workout />} />
+          
+          {/* Onboarding Flow */}
+          <Route path="/onboarding" element={<LevelSelection />} />
+          <Route path="/onboarding/level" element={<LevelSelection />} />
+          <Route path="/onboarding/profile" element={<UserProfile />} />
+          <Route path="/onboarding/availability" element={<TrainingAvailability />} />
+          
+          {/* Workout Flow */}
+          <Route path="/workout/muscle-groups" element={<MuscleGroups />} />
+          <Route path="/workout/exercises/:muscleGroupId" element={<ExercisesList />} />
+          <Route path="/workout/exercise/:exerciseId" element={<ExerciseExecution />} />
+          <Route path="/workout/summary" element={<WorkoutSummary />} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

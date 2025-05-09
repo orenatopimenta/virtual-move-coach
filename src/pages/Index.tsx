@@ -19,10 +19,15 @@ const Index: React.FC = () => {
       <main>
         <HeroSection />
         <div className="formfit-container py-8">
-          <div className="flex justify-center">
-            <Link to="/workout">
+          <div className="flex justify-center gap-4">
+            <Link to="/onboarding">
               <Button className="bg-formfit-blue hover:bg-formfit-blue/90 text-white font-medium px-8 py-3 rounded-lg text-lg">
-                Experimente o FormFit AI Agora
+                Começar Experiência Guiada
+              </Button>
+            </Link>
+            <Link to="/workout">
+              <Button className="bg-gray-600 hover:bg-gray-700 text-white font-medium px-8 py-3 rounded-lg text-lg">
+                Ir Diretamente para Treino
               </Button>
             </Link>
           </div>
