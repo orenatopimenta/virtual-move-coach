@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -99,13 +100,13 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         await tf.setBackend('webgl');
         const backend = tf.getBackend();
         if (backend === 'webgl') {
-          const gl = tf.backend().getGPGPUContext().gl;
-          if (gl) {
-            // Priorizar performance em vez de precisão
-            gl.getExtension('WEBGL_lose_context');
-            // Reduzir precisão para melhorar performance
-            gl.getExtension('OES_texture_float_linear');
-          }
+          // Removendo a linha problemática que tenta acessar getGPGPUContext
+          // Configurações alternativas para otimização
+          tf.env().set('WEBGL_CPU_FORWARD', false);
+          tf.env().set('WEBGL_PACK', true);
+          tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
+          tf.env().set('WEBGL_FLUSH_THRESHOLD', 1);
+          tf.env().set('CHECK_NUMERIC_RANGES', false);
         }
         
         await tf.ready();
