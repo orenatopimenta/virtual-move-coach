@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -135,7 +134,11 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
 
     return () => {
       if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
+        if (typeof requestRef.current === 'number') {
+          cancelAnimationFrame(requestRef.current);
+        } else {
+          clearTimeout(requestRef.current);
+        }
       }
       
       // Stop webcam
@@ -165,19 +168,20 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       }
       
       // Continue detection loop with lower FPS for better performance
-      // Fix: Explicitly handle the NodeJS.Timeout type
+      // Fix: Create a properly typed handler for the animation frame
       requestRef.current = setTimeout(() => {
         if (requestRef.current && typeof requestRef.current !== 'number') {
           clearTimeout(requestRef.current);
         }
-        requestRef.current = requestAnimationFrame(detectPose);
+        // The key fix: Cast the function to number explicitly for TypeScript
+        requestRef.current = requestAnimationFrame(() => detectPose());
       }, 1000/24); // Targeting around 24 FPS
     } catch (error) {
       console.error('Erro durante a detecção de pose:', error);
       onFeedback('Erro na detecção. Tente reiniciar o exercício.');
       // Attempt to restart detection after a short delay
       setTimeout(() => {
-        requestRef.current = requestAnimationFrame(detectPose);
+        requestRef.current = requestAnimationFrame(() => detectPose());
       }, 2000);
     }
   };
@@ -190,7 +194,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         clearTimeout(requestRef.current);
       }
     }
-    requestRef.current = requestAnimationFrame(detectPose);
+    // Fix: Also use the arrow function syntax here for consistency
+    requestRef.current = requestAnimationFrame(() => detectPose());
   };
   
   const drawPose = (pose: poseDetection.Pose, canvas: HTMLCanvasElement) => {
