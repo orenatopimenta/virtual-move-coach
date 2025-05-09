@@ -1,63 +1,78 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Workout from "./pages/Workout";
-import NotFound from "./pages/NotFound";
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import Index from './pages/Index';
+import NotFound from './pages/NotFound';
+import Workout from './pages/Workout';
+import Subscription from './pages/Subscription';
+import TrainingAvailability from './pages/OnboardingFlow/TrainingAvailability';
+import LevelSelection from './pages/OnboardingFlow/LevelSelection';
+import UserProfile from './pages/OnboardingFlow/UserProfile';
+import UserRegistration from './pages/OnboardingFlow/UserRegistration';
+import ExercisesList from './pages/WorkoutFlow/ExercisesList';
+import ExerciseExecution from './pages/WorkoutFlow/ExerciseExecution';
+import MuscleGroups from './pages/WorkoutFlow/MuscleGroups';
+import WorkoutSummary from './pages/WorkoutFlow/WorkoutSummary';
 
-// Onboarding Flow
-import LevelSelection from "./pages/OnboardingFlow/LevelSelection";
-import UserProfile from "./pages/OnboardingFlow/UserProfile";
-import TrainingAvailability from "./pages/OnboardingFlow/TrainingAvailability";
-import UserRegistration from "./pages/OnboardingFlow/UserRegistration";
+// Novas páginas 
+import AreasDeExercicio from './pages/ExperienciaGuiada/AreasDeExercicio';
+import ExerciciosPorArea from './pages/ExperienciaGuiada/ExerciciosPorArea';
+import Login from './pages/Login';
+import PrimeiroAcesso from './pages/PrimeiroAcesso';
+import Dashboard from './pages/Dashboard';
 
-// Workout Flow
-import MuscleGroups from "./pages/WorkoutFlow/MuscleGroups";
-import ExercisesList from "./pages/WorkoutFlow/ExercisesList";
-import ExerciseExecution from "./pages/WorkoutFlow/ExerciseExecution";
-import WorkoutSummary from "./pages/WorkoutFlow/WorkoutSummary";
+import { Toaster } from '@/components/ui/toaster';
+import './App.css';
 
-// New subscription page
-import Subscription from "./pages/Subscription";
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
 
-const queryClient = new QueryClient();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+  return null;
+};
+
+function App() {
+  return (
+    <Router>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        
+        {/* Fluxo de Experiência Guiada */}
+        <Route path="/experiencia-guiada" element={<AreasDeExercicio />} />
+        <Route path="/experiencia-guiada/exercicios/:areaId" element={<ExerciciosPorArea />} />
+        
+        {/* Login e Cadastro */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+                
+        {/* Treino */}
+        <Route path="/workout" element={<Workout />} />
+
+        {/* Fluxo de Onboarding (existente) */}
+        <Route path="/onboarding" element={<TrainingAvailability />} />
+        <Route path="/onboarding/level" element={<LevelSelection />} />
+        <Route path="/onboarding/profile" element={<UserProfile />} />
+        <Route path="/onboarding/registration" element={<UserRegistration />} />
+        
+        {/* Fluxo de treino (existente) */}
+        <Route path="/workout-flow/muscle-groups" element={<MuscleGroups />} />
+        <Route path="/workout-flow/exercises" element={<ExercisesList />} />
+        <Route path="/workout-flow/execution" element={<ExerciseExecution />} />
+        <Route path="/workout-flow/summary" element={<WorkoutSummary />} />
+        
+        {/* Assinatura */}
+        <Route path="/subscription" element={<Subscription />} />
+        
+        <Route path="*" element={<NotFound />} />
+      </Routes>
       <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/workout" element={<Workout />} />
-          
-          {/* Onboarding Flow */}
-          <Route path="/onboarding" element={<LevelSelection />} />
-          <Route path="/onboarding/level" element={<LevelSelection />} />
-          <Route path="/onboarding/profile" element={<UserProfile />} />
-          <Route path="/onboarding/availability" element={<TrainingAvailability />} />
-          <Route path="/onboarding/registration" element={<UserRegistration />} />
-          
-          {/* Workout Flow */}
-          <Route path="/workout/muscle-groups" element={<MuscleGroups />} />
-          <Route path="/workout/guided/muscle-groups" element={<MuscleGroups />} />
-          <Route path="/workout/exercises/:muscleGroupId" element={<ExercisesList />} />
-          <Route path="/workout/exercise/:exerciseId" element={<ExerciseExecution />} />
-          <Route path="/workout/summary" element={<WorkoutSummary />} />
-          
-          {/* Subscription page */}
-          <Route path="/subscription" element={<Subscription />} />
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </Router>
+  );
+}
 
 export default App;

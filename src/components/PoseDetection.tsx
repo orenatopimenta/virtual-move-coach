@@ -27,6 +27,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   
   const keypointsRef = useRef<any[]>([]);
   const detectorRef = useRef<poseDetection.PoseDetector | null>(null);
+  // Use uma união de tipos para o requestRef para acomodar tanto requestAnimationFrame quanto setTimeout
   const requestRef = useRef<number | NodeJS.Timeout | null>(null);
   const frameCountRef = useRef<number>(0);
   const prevKneeAngleRef = useRef<number>(180);
@@ -61,7 +62,11 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       try {
         console.log('Tentando acessar a câmera...');
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user' },
+          video: { 
+            facingMode: 'user',
+            width: { ideal: 480 }, // Reduzir para melhorar performance
+            height: { ideal: 360 }
+          },
           audio: false
         });
         
@@ -89,7 +94,20 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         console.log('Inicializando o backend TensorFlow.js...');
         const tf = await import('@tensorflow/tfjs-core');
         await import('@tensorflow/tfjs-backend-webgl');
+        
+        // Configurações otimizadas para melhor performance
         await tf.setBackend('webgl');
+        const backend = tf.getBackend();
+        if (backend === 'webgl') {
+          const gl = tf.backend().getGPGPUContext().gl;
+          if (gl) {
+            // Priorizar performance em vez de precisão
+            gl.getExtension('WEBGL_lose_context');
+            // Reduzir precisão para melhorar performance
+            gl.getExtension('OES_texture_float_linear');
+          }
+        }
+        
         await tf.ready();
         console.log('Backend TensorFlow.js inicializado:', tf.getBackend());
         
@@ -97,8 +115,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         // Use MoveNet - a lightweight and fast pose detection model
         const model = poseDetection.SupportedModels.MoveNet;
         const detectorConfig = {
-          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-          enableSmoothing: true // Enable pose smoothing
+          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING, // Usar modelo LIGHTNING para maior velocidade
+          enableSmoothing: true
         };
         
         // Initialize the detector
@@ -167,15 +185,13 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         drawPose(poses[0], canvasRef.current);
       }
       
-      // Continue detection loop with lower FPS for better performance
-      // Fix: Create a properly typed handler for the animation frame
+      // Limitar taxa de atualização para melhorar performance
       requestRef.current = setTimeout(() => {
         if (requestRef.current && typeof requestRef.current !== 'number') {
           clearTimeout(requestRef.current);
         }
-        // The key fix: Cast the function to number explicitly for TypeScript
         requestRef.current = requestAnimationFrame(() => detectPose());
-      }, 1000/24); // Targeting around 24 FPS
+      }, 1000/15); // Reduzir para 15 FPS para melhor performance
     } catch (error) {
       console.error('Erro durante a detecção de pose:', error);
       onFeedback('Erro na detecção. Tente reiniciar o exercício.');
@@ -194,7 +210,6 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         clearTimeout(requestRef.current);
       }
     }
-    // Fix: Also use the arrow function syntax here for consistency
     requestRef.current = requestAnimationFrame(() => detectPose());
   };
   
@@ -214,27 +229,21 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
     // Draw keypoints
     const keypoints = pose.keypoints;
     
-    // Draw connections (skeleton)
-    ctx.strokeStyle = '#4361EE';
-    ctx.lineWidth = 4;
-    
-    // Define the connections in the skeleton
+    // Otimização: Limitar número de elementos visuais
+    // Reduzir a complexidade do desenho para melhorar a performance
+
+    // Usar um conjunto simplificado de conexões para o esqueleto
     const connections = [
-      // Torso
-      ['left_shoulder', 'right_shoulder'],
-      ['left_shoulder', 'left_hip'],
-      ['right_shoulder', 'right_hip'],
-      ['left_hip', 'right_hip'],
-      // Arms
       ['left_shoulder', 'left_elbow'],
-      ['right_shoulder', 'right_elbow'],
       ['left_elbow', 'left_wrist'],
+      ['right_shoulder', 'right_elbow'],
       ['right_elbow', 'right_wrist'],
-      // Legs
       ['left_hip', 'left_knee'],
-      ['right_hip', 'right_knee'],
       ['left_knee', 'left_ankle'],
+      ['right_hip', 'right_knee'],
       ['right_knee', 'right_ankle'],
+      ['left_shoulder', 'right_shoulder'],
+      ['left_hip', 'right_hip'],
     ];
     
     // Get keypoints as a dictionary for easier access
@@ -243,54 +252,16 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       keypointDict[keypoint.name as string] = keypoint;
     });
     
-    // Draw the connections
+    // Draw the connections more efficiently
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#0EA5E9';
+    
     connections.forEach(([start, end]) => {
       const startKeypoint = keypointDict[start];
       const endKeypoint = keypointDict[end];
       
-      // MUITO MAIS SENSÍVEL: Reduzindo o limiar de confiança para TODAS as partes
-      if (startKeypoint && endKeypoint && startKeypoint.score && endKeypoint.score && 
-          startKeypoint.score > 0.2 && endKeypoint.score > 0.2) {
-        
-        const isLowerBody = start.includes('knee') || end.includes('knee') || 
-                      start.includes('ankle') || end.includes('ankle') || 
-                      start.includes('hip');
-        
-        // Cores especiais para as partes do corpo relevantes ao exercício
-        let exerciseRelated = false;
-        
-        if (exercise.toLowerCase().includes('agachamento') || exercise.toLowerCase().includes('squat')) {
-          exerciseRelated = isLowerBody;
-        } 
-        else if (exercise.toLowerCase().includes('flexão') || exercise.toLowerCase().includes('push')) {
-          exerciseRelated = start.includes('shoulder') || end.includes('shoulder') || 
-                          start.includes('elbow') || end.includes('elbow') ||
-                          start.includes('wrist') || end.includes('wrist');
-        }
-        else if (exercise.toLowerCase().includes('rosca') || exercise.toLowerCase().includes('curl')) {
-          exerciseRelated = start.includes('elbow') || end.includes('elbow') ||
-                          start.includes('wrist') || end.includes('wrist') ||
-                          start.includes('shoulder') || end.includes('shoulder');
-        }
-        else if (exercise.toLowerCase().includes('prancha') || exercise.toLowerCase().includes('plank')) {
-          exerciseRelated = start.includes('shoulder') || end.includes('shoulder') ||
-                          start.includes('hip') || end.includes('hip') ||
-                          start.includes('knee') || end.includes('knee');
-        }
-        
-        if (exerciseRelated && squatDetected) {
-          ctx.strokeStyle = '#ea384c'; // Vermelho mais vivo
-          ctx.lineWidth = 6; // Mais grosso
-        } 
-        else if (exerciseRelated) {
-          ctx.strokeStyle = '#0EA5E9'; // Azul oceânico
-          ctx.lineWidth = 5;
-        } 
-        else {
-          ctx.strokeStyle = '#4361EE';
-          ctx.lineWidth = 3;
-        }
-        
+      if (startKeypoint?.score && endKeypoint?.score && 
+          startKeypoint.score > 0.3 && endKeypoint.score > 0.3) {
         ctx.beginPath();
         ctx.moveTo(startKeypoint.x, startKeypoint.y);
         ctx.lineTo(endKeypoint.x, endKeypoint.y);
@@ -298,134 +269,38 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       }
     });
     
-    // Draw individual keypoints with improved visibility
-    keypoints.forEach(keypoint => {
-      // MUITO MAIS SENSÍVEL: Reduzindo drasticamente o limiar
-      const confidenceThreshold = 0.2;
-      
-      if (keypoint.score && keypoint.score > confidenceThreshold) {
-        // Check if this keypoint is related to the exercise
-        let isExercisePoint = false;
-        
-        if (exercise.toLowerCase().includes('agachamento') || exercise.toLowerCase().includes('squat')) {
-          isExercisePoint = keypoint.name?.includes('knee') || 
-                         keypoint.name?.includes('ankle') || 
-                         keypoint.name?.includes('hip');
-        } 
-        else if (exercise.toLowerCase().includes('flexão') || exercise.toLowerCase().includes('push')) {
-          isExercisePoint = keypoint.name?.includes('shoulder') || 
-                         keypoint.name?.includes('elbow') || 
-                         keypoint.name?.includes('wrist');
-        }
-        else if (exercise.toLowerCase().includes('rosca') || exercise.toLowerCase().includes('curl')) {
-          isExercisePoint = keypoint.name?.includes('shoulder') || 
-                         keypoint.name?.includes('elbow') || 
-                         keypoint.name?.includes('wrist');
-        }
-        else if (exercise.toLowerCase().includes('prancha') || exercise.toLowerCase().includes('plank')) {
-          isExercisePoint = keypoint.name?.includes('shoulder') || 
-                         keypoint.name?.includes('hip') || 
-                         keypoint.name?.includes('knee') || 
-                         keypoint.name?.includes('ankle');
-        }
-        
-        if (isExercisePoint) {
-          if (squatDetected && (exercise.toLowerCase().includes('agachamento') || exercise.toLowerCase().includes('squat'))) {
-            // Vermelho VIVO quando agachado
-            ctx.fillStyle = '#ea384c';
-            ctx.beginPath();
-            ctx.arc(keypoint.x, keypoint.y, 10, 0, 2 * Math.PI); // Pontos MAIORES
-            ctx.fill();
-            
-            // Contorno branco para destacar mais
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          } else {
-            // Azul mais vibrante para pontos relacionados ao exercício
-            ctx.fillStyle = '#0EA5E9';
-            ctx.beginPath();
-            ctx.arc(keypoint.x, keypoint.y, 8, 0, 2 * Math.PI);
-            ctx.fill();
-          }
-          
-          // Adicionar etiqueta para ângulos relevantes
-          if (exercise.toLowerCase().includes('agachamento') || exercise.toLowerCase().includes('squat')) {
-            if (keypoint.name?.includes('knee')) {
-              displayJointAngle(ctx, keypointDict, 'knee', 'hip', 'ankle');
-            }
-          }
-          else if (exercise.toLowerCase().includes('flexão') || exercise.toLowerCase().includes('push')) {
-            if (keypoint.name?.includes('elbow')) {
-              displayJointAngle(ctx, keypointDict, 'elbow', 'shoulder', 'wrist');
-            }
-          }
-          else if (exercise.toLowerCase().includes('rosca') || exercise.toLowerCase().includes('curl')) {
-            if (keypoint.name?.includes('elbow')) {
-              displayJointAngle(ctx, keypointDict, 'elbow', 'shoulder', 'wrist');
-            }
-          }
-        } else {
-          // Outras partes do corpo
-          ctx.fillStyle = '#F72585';
-          ctx.beginPath();
-          ctx.arc(keypoint.x, keypoint.y, 5, 0, 2 * Math.PI);
-          ctx.fill();
-        }
+    // Draw only important keypoints
+    const importantJoints = [
+      'left_shoulder', 'right_shoulder', 
+      'left_elbow', 'right_elbow',
+      'left_wrist', 'right_wrist',
+      'left_hip', 'right_hip',
+      'left_knee', 'right_knee',
+      'left_ankle', 'right_ankle'
+    ];
+    
+    ctx.fillStyle = '#F72585';
+    importantJoints.forEach(joint => {
+      const keypoint = keypointDict[joint];
+      if (keypoint?.score && keypoint.score > 0.3) {
+        ctx.beginPath();
+        ctx.arc(keypoint.x, keypoint.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
       }
     });
     
-    // Adicionar um indicador visual da qualidade da detecção
-    const qualityColors = {
-      poor: '#FF0000',
-      good: '#FFFF00',
-      excellent: '#00FF00'
-    };
-    
-    // Indicador de qualidade no canto superior
-    ctx.fillStyle = qualityColors[detectionQuality];
-    ctx.font = "bold 18px Arial";
+    // Indicador de qualidade com estilo simplificado
+    ctx.font = "bold 16px Arial";
+    ctx.fillStyle = detectionQuality === 'poor' ? '#FF0000' : 
+                  detectionQuality === 'good' ? '#FFFF00' : '#00FF00';
     ctx.fillText(`Qualidade: ${detectionQuality === 'poor' ? 'Ruim' : 
-                              detectionQuality === 'good' ? 'Boa' : 'Excelente'}`, 20, 30);
+                detectionQuality === 'good' ? 'Boa' : 'Excelente'}`, 20, 30);
     
-    // Indicador visual de exercício detectado
-    if (squatDetected && (exercise.toLowerCase().includes('agachamento') || exercise.toLowerCase().includes('squat'))) {
-      ctx.fillStyle = 'rgba(234, 56, 76, 0.7)'; // Vermelho semi-transparente
-      ctx.font = "bold 36px Arial";
-      ctx.fillText("AGACHAMENTO DETECTADO!", canvas.width/2 - 250, 60);
-      
-      // Borda para destacar o texto
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.strokeText("AGACHAMENTO DETECTADO!", canvas.width/2 - 250, 60);
-    }
-  };
-  
-  // Helper function to display joint angles
-  const displayJointAngle = (ctx: CanvasRenderingContext2D, keypointDict: any, joint: string, parent: string, child: string) => {
-    const sides = ['left_', 'right_'];
-    
-    for (const side of sides) {
-      const jointPoint = keypointDict[`${side}${joint}`];
-      const parentPoint = keypointDict[`${side}${parent}`];
-      const childPoint = keypointDict[`${side}${child}`];
-      
-      if (jointPoint && parentPoint && childPoint && 
-          jointPoint.score && parentPoint.score && childPoint.score && 
-          jointPoint.score > 0.2 && parentPoint.score > 0.2 && childPoint.score > 0.2) {
-        
-        const angle = calculateAngle(parentPoint, jointPoint, childPoint);
-        
-        // Texto mais visível
-        ctx.fillStyle = "#FFFFFF";
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 3;
-        ctx.font = "bold 16px Arial";
-        
-        // Desenhar sombra para o texto
-        ctx.strokeText(`${Math.round(angle)}°`, jointPoint.x + 15, jointPoint.y);
-        ctx.fillText(`${Math.round(angle)}°`, jointPoint.x + 15, jointPoint.y);
-      }
+    // Visual indicator when movement is detected - simplified
+    if (squatDetected && exercise.toLowerCase().includes('agachamento')) {
+      ctx.fillStyle = 'rgba(234, 56, 76, 0.7)';
+      ctx.font = "bold 24px Arial";
+      ctx.fillText("AGACHAMENTO DETECTADO!", 50, 60);
     }
   };
   
@@ -803,8 +678,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         autoPlay
         playsInline
         style={{ display: 'none' }}
-        width="640"
-        height="480"
+        width="480"
+        height="360"
         onLoadedData={() => {
           if (canvasRef.current && videoRef.current) {
             canvasRef.current.width = videoRef.current.videoWidth;
@@ -816,7 +691,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       {/* Canvas for drawing pose */}
       <canvas 
         ref={canvasRef}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover rounded-lg"
       />
       
       {/* Loading overlays */}
@@ -846,19 +721,18 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         </div>
       )}
       
-      {/* Visual squat indicator - MAIS VISÍVEL */}
+      {/* Indicators simplified for better performance */}
       {squatDetected && exercise.toLowerCase().includes('agachamento') && (
-        <div className="absolute bottom-4 left-4 bg-red-500 px-4 py-2 rounded-full text-white text-base font-bold animate-pulse shadow-lg">
+        <div className="absolute bottom-4 left-4 bg-red-500 px-3 py-1 rounded-full text-white text-sm font-bold">
           Agachamento Detectado!
         </div>
       )}
       
-      {/* Novo indicador de qualidade de detecção */}
-      <div className={`absolute top-4 left-4 px-4 py-2 rounded-full text-white text-base font-bold 
-                      ${detectionQuality === 'poor' ? 'bg-red-500' : 
-                        detectionQuality === 'good' ? 'bg-yellow-500' : 'bg-green-500'}`}>
-        Detecção: {detectionQuality === 'poor' ? 'Ruim' : 
-                 detectionQuality === 'good' ? 'Boa' : 'Excelente'}
+      <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-white text-sm font-bold 
+                     ${detectionQuality === 'poor' ? 'bg-red-500' : 
+                       detectionQuality === 'good' ? 'bg-yellow-500' : 'bg-green-500'}`}>
+        {detectionQuality === 'poor' ? 'Detecção Ruim' : 
+        detectionQuality === 'good' ? 'Detecção Boa' : 'Detecção Excelente'}
       </div>
       
       {/* Instrução de posicionamento - Exercise specific */}
