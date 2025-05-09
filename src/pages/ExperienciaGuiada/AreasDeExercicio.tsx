@@ -1,17 +1,28 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
 import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Lock } from 'lucide-react';
+import { ArrowLeft, Lock, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AreasDeExercicio: React.FC = () => {
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  useEffect(() => {
+    // Check if user is logged in
+    const loginStatus = localStorage.getItem("isLoggedIn");
+    setIsLoggedIn(loginStatus === "true");
+  }, []);
   
   const handleBack = () => {
     navigate('/');
+  };
+  
+  const handleGoToDashboard = () => {
+    navigate('/dashboard');
   };
   
   const muscleGroups = [
@@ -19,31 +30,31 @@ const AreasDeExercicio: React.FC = () => {
       id: 'pernas',
       name: 'Pernas',
       color: 'bg-gradient-to-r from-blue-400 to-blue-600',
-      available: true
+      available: true // Always available
     },
     {
       id: 'braco',
       name: 'Braços',
       color: 'bg-gradient-to-r from-red-400 to-red-600',
-      available: false
+      available: isLoggedIn // Available if logged in
     },
     {
       id: 'peito',
       name: 'Peito',
       color: 'bg-gradient-to-r from-green-400 to-green-600',
-      available: false
+      available: isLoggedIn // Available if logged in
     },
     {
       id: 'costas',
       name: 'Costas',
       color: 'bg-gradient-to-r from-purple-400 to-purple-600',
-      available: false
+      available: isLoggedIn // Available if logged in
     },
     {
       id: 'abdomen',
       name: 'Abdômen',
       color: 'bg-gradient-to-r from-yellow-400 to-yellow-600',
-      available: false
+      available: isLoggedIn // Available if logged in
     }
   ];
 
@@ -62,6 +73,16 @@ const AreasDeExercicio: React.FC = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="formfit-heading text-center flex-1">Quais áreas você quer treinar?</h1>
+            {isLoggedIn && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleGoToDashboard}
+                className="ml-2"
+              >
+                <Home className="h-5 w-5" />
+              </Button>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md mx-auto">

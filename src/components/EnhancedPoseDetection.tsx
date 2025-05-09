@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -125,31 +124,38 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
       if (!videoRef.current) return;
 
       try {
-        console.log('Tentando acessar a câmera...');
+        console.log('Requesting camera access...');
+        // Request camera with lower resolution for better performance
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
             facingMode: 'user',
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            frameRate: { ideal: 30 }
+            width: { ideal: 320 }, // Reduced for performance
+            height: { ideal: 240 },
+            frameRate: { ideal: 20 } // Lower framerate for stability
           },
           audio: false
         });
         
         videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute('playsinline', '');
+        videoRef.current.setAttribute('autoplay', '');
         
         return new Promise<void>((resolve) => {
           if (videoRef.current) {
             videoRef.current.onloadedmetadata = () => {
-              console.log('Câmera configurada com sucesso');
+              console.log('Camera successfully configured');
+              videoRef.current?.play().catch(e => {
+                console.error('Error playing camera stream:', e);
+                setLoadError('Error starting camera stream. Please refresh and try again.');
+              });
               resolve();
             };
           }
         });
       } catch (error) {
-        console.error('Erro ao acessar a câmera:', error);
-        setLoadError('Erro ao acessar câmera. Verifique suas permissões.');
-        onFeedback('Erro ao acessar câmera. Verifique suas permissões.');
+        console.error('Error accessing camera:', error);
+        setLoadError('Error accessing camera. Please check your camera permissions in browser settings.');
+        onFeedback('Error accessing camera. Please check your permissions and refresh the page.');
       }
     };
 
@@ -157,51 +163,67 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
       setIsModelLoading(true);
       
       try {
-        console.log('Inicializando o backend TensorFlow.js...');
-        // Force WebGL backend for better performance
+        console.log('Initializing TensorFlow.js backend...');
+        // Import and initialize TensorFlow
         const tf = await import('@tensorflow/tfjs-core');
         await import('@tensorflow/tfjs-backend-webgl');
-        await tf.setBackend('webgl');
-        await tf.ready();
-        console.log('Backend TensorFlow.js inicializado:', tf.getBackend());
         
-        console.log('Carregando modelo MoveNet...');
+        // Optimize WebGL backend settings for mobile
+        await tf.setBackend('webgl');
+        
+        // More basic settings that work across browsers
+        tf.env().set('WEBGL_CPU_FORWARD', false);
+        tf.env().set('WEBGL_PACK', true);
+        tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
+        tf.env().set('WEBGL_FLUSH_THRESHOLD', 1);
+        tf.env().set('CHECK_NUMERIC_RANGES', false);
+        
+        await tf.ready();
+        console.log('TensorFlow.js backend initialized:', tf.getBackend());
+        
+        console.log('Loading MoveNet model...');
         const model = poseDetection.SupportedModels.MoveNet;
         const detectorConfig = {
-          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-          enableSmoothing: true // Enable pose smoothing to reduce jitter
+          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING, // Use smaller, faster model
+          enableSmoothing: true // Enable pose smoothing
         };
         
         detectorRef.current = await poseDetection.createDetector(model, detectorConfig);
-        console.log('Modelo MoveNet carregado com sucesso');
+        console.log('MoveNet model loaded successfully');
         setIsModelLoading(false);
       } catch (error) {
-        console.error('Erro ao carregar o modelo de detecção:', error);
-        setLoadError('Erro ao carregar o modelo de detecção. Tente novamente.');
-        onFeedback('Erro ao carregar o modelo de detecção. Tente novamente.');
+        console.error('Error loading detection model:', error);
+        setLoadError('Error loading detection model. Please refresh and try again.');
+        onFeedback('Error loading detection model. Please refresh and try again.');
         setIsModelLoading(false);
       }
     };
 
     const initialize = async () => {
       try {
+        // Setup camera first
         await setupCamera();
         setIsWebcamLoading(false);
+        
+        // Then load the model
         await loadModel();
         
+        // Start detection if everything is ready
         if (videoRef.current && canvasRef.current && detectorRef.current) {
-          console.log('Iniciando detecção de poses');
+          console.log('Starting pose detection');
           startDetection();
         }
       } catch (error) {
-        console.error('Erro durante a inicialização:', error);
-        setLoadError('Ocorreu um erro na inicialização. Tente novamente.');
-        onFeedback('Ocorreu um erro na inicialização. Tente novamente.');
+        console.error('Error during initialization:', error);
+        setLoadError('An error occurred during initialization. Please refresh and try again.');
+        onFeedback('An error occurred during initialization. Please refresh and try again.');
       }
     };
 
+    // Start initialization
     initialize();
 
+    // Cleanup on unmount
     return () => {
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -685,14 +707,13 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
         ref={videoRef}
         autoPlay
         playsInline
-        style={{ display: 'none' }}
-        width="640"
-        height="480"
-        onLoadedData={() => {
-          if (canvasRef.current && videoRef.current) {
-            canvasRef.current.width = videoRef.current.videoWidth;
-            canvasRef.current.height = videoRef.current.videoHeight;
-          }
+        style={{ 
+          position: 'absolute', 
+          width: '100%', 
+          height: '100%', 
+          objectFit: 'cover',
+          opacity: 0.01, // Almost invisible but still rendered
+          zIndex: -1
         }}
       />
       
@@ -706,7 +727,8 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
       {(isModelLoading || isWebcamLoading) && (
         <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mb-4"></div>
-          <p>{isWebcamLoading ? "Acessando câmera..." : "Carregando modelo de IA..."}</p>
+          <p className="text-center">{isWebcamLoading ? "Acessando câmera..." : "Carregando modelo de IA..."}</p>
+          <p className="text-sm text-gray-300 mt-2">Por favor, permita o acesso à câmera se solicitado</p>
         </div>
       )}
 

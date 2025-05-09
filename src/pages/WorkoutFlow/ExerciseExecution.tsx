@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Timer, StopCircle } from 'lucide-react';
+import { ArrowLeft, Timer, StopCircle, RefreshCw, Home, Play, Pause } from 'lucide-react';
 import EnhancedPoseDetection from '@/components/EnhancedPoseDetection';
 import ExerciseAnimation from '@/components/ExerciseAnimation';
 import WorkoutDashboard from '@/components/WorkoutDashboard';
@@ -15,7 +15,7 @@ interface ExerciseData {
   muscles: string;
 }
 
-type ExerciseStage = 'intro' | 'setup' | 'active' | 'rest' | 'complete';
+type ExerciseStage = 'intro' | 'setup' | 'active' | 'paused' | 'rest' | 'complete';
 
 interface RepStats {
   total: number;
@@ -143,6 +143,40 @@ const ExerciseExecution: React.FC = () => {
       duration: 2000,
     });
   };
+
+  const handlePauseAnalysis = () => {
+    if (stage === 'active') {
+      setStage('paused');
+      toast({
+        title: "Treino pausado",
+        description: "Clique em Retomar para continuar.",
+        duration: 2000,
+      });
+    } else if (stage === 'paused') {
+      setStage('active');
+      toast({
+        title: "Treino retomado",
+        description: "Continue seu exercício.",
+        duration: 2000,
+      });
+    }
+  };
+
+  const handleRestartAnalysis = () => {
+    // Reset stats
+    setRepetitions(0);
+    setFeedback(null);
+    setFeedbackType(null);
+    
+    // Start fresh
+    setStage('active');
+    setIsAnalyzing(true);
+    toast({
+      title: "Treino reiniciado",
+      description: "Posicione-se na frente da câmera.",
+      duration: 2000,
+    });
+  };
   
   const handleStopAnalysis = () => {
     setIsAnalyzing(false);
@@ -227,7 +261,9 @@ const ExerciseExecution: React.FC = () => {
     // This is a simple implementation - in a real app, you'd have a more robust solution
     const mapping: {[key: string]: string} = {
       "squat": "pernas",
+      "agachamento": "pernas",
       "lunge": "pernas",
+      "afundo": "pernas",
       "sumo": "pernas",
       "calf": "pernas",
       "pushup": "peito",
@@ -242,10 +278,10 @@ const ExerciseExecution: React.FC = () => {
       "frontrise": "ombro",
       "shrugs": "ombro",
       "circle": "ombro",
-      "curl": "biceps-triceps",
-      "hammer": "biceps-triceps",
-      "tricepsext": "biceps-triceps",
-      "kickback": "biceps-triceps",
+      "curl": "braco",
+      "hammer": "braco",
+      "tricepsext": "braco",
+      "kickback": "braco",
       "crunch": "abdomen",
       "plank": "abdomen",
       "legrise": "abdomen",
@@ -267,7 +303,11 @@ const ExerciseExecution: React.FC = () => {
   
   const handleBack = () => {
     const muscleGroupId = getMuscleGroupFromExercise(exerciseId);
-    navigate(`/workout/exercises/${muscleGroupId}`);
+    navigate(`/experiencia-guiada/exercicios/${muscleGroupId}`);
+  };
+
+  const handleGoToDashboard = () => {
+    navigate('/dashboard');
   };
 
   const toggleDashboard = () => {
@@ -314,12 +354,22 @@ const ExerciseExecution: React.FC = () => {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h1 className="formfit-subheading text-center">{exercise?.name}</h1>
-            <button
-              onClick={toggleDashboard}
-              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-            >
-              <Timer className="h-5 w-5" />
-            </button>
+            <div className="flex">
+              <button
+                onClick={handleGoToDashboard}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors mr-2"
+                title="Ir para Dashboard"
+              >
+                <Home className="h-5 w-5" />
+              </button>
+              <button
+                onClick={toggleDashboard}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                title="Ver estatísticas"
+              >
+                <Timer className="h-5 w-5" />
+              </button>
+            </div>
           </div>
           
           {/* Instagram-style progress bar */}
@@ -363,6 +413,28 @@ const ExerciseExecution: React.FC = () => {
                   </div>
                 )}
                 
+                {stage === 'paused' && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-70 text-white">
+                    <h2 className="text-2xl font-bold mb-4">Treino Pausado</h2>
+                    <div className="flex space-x-4">
+                      <Button
+                        onClick={handlePauseAnalysis}
+                        className="bg-green-500 hover:bg-green-600"
+                        size="lg"
+                      >
+                        <Play className="mr-2 h-5 w-5" /> Retomar
+                      </Button>
+                      <Button
+                        onClick={handleRestartAnalysis}
+                        className="bg-blue-500 hover:bg-blue-600"
+                        size="lg"
+                      >
+                        <RefreshCw className="mr-2 h-5 w-5" /> Reiniciar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
                 {stage === 'rest' && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 bg-opacity-70 text-white">
                     <h2 className="text-2xl font-bold mb-2">Descanse</h2>
@@ -376,18 +448,27 @@ const ExerciseExecution: React.FC = () => {
                     <h2 className="text-2xl font-bold mb-4">Treino Finalizado!</h2>
                     <p className="text-lg mb-2">Séries: {series}/3</p>
                     <p className="text-lg mb-6">Repetições: {repStats.total}</p>
-                    <Button
-                      onClick={handleFinishWorkout}
-                      className="bg-green-500 hover:bg-green-600"
-                      size="lg"
-                    >
-                      Ver Resumo
-                    </Button>
+                    <div className="flex space-x-4">
+                      <Button
+                        onClick={handleRestartAnalysis}
+                        className="bg-blue-500 hover:bg-blue-600"
+                        size="lg"
+                      >
+                        <RefreshCw className="mr-2 h-5 w-5" /> Novo Treino
+                      </Button>
+                      <Button
+                        onClick={handleFinishWorkout}
+                        className="bg-green-500 hover:bg-green-600"
+                        size="lg"
+                      >
+                        Ver Resumo
+                      </Button>
+                    </div>
                   </div>
                 )}
                 
                 {/* Pose detection component */}
-                {isAnalyzing && (
+                {(isAnalyzing && (stage === 'active' || stage === 'paused')) && (
                   <EnhancedPoseDetection
                     exercise={exerciseId}
                     onRepetitionCount={handleRepetitionCounted}
@@ -426,13 +507,22 @@ const ExerciseExecution: React.FC = () => {
                 
                 {/* Controls */}
                 {isAnalyzing && stage === 'active' && (
-                  <Button
-                    onClick={handleStopAnalysis}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white"
-                    size="lg"
-                  >
-                    <StopCircle className="mr-2 h-5 w-5" /> Finalizar Treino
-                  </Button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Button
+                      onClick={handlePauseAnalysis}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                      size="lg"
+                    >
+                      <Pause className="mr-2 h-5 w-5" /> Pausar
+                    </Button>
+                    <Button
+                      onClick={handleStopAnalysis}
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                      size="lg"
+                    >
+                      <StopCircle className="mr-2 h-5 w-5" /> Finalizar
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
