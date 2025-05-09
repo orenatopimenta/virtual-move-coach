@@ -1,70 +1,96 @@
 
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
 import Footer from '@/components/Footer';
-import { Grid2X2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { ArrowRight, ArrowLeft, Dumbbell, Users, Heart, Coffee } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-
-interface MuscleGroupCard {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  bgColor: string;
-}
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 const MuscleGroups: React.FC = () => {
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [showPaywallDialog, setShowPaywallDialog] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  
+  // Check if we're in guided experience mode
+  const isGuidedExperience = location.pathname.includes('guided') || 
+                             localStorage.getItem('experienceMode') === 'guided';
 
-  const muscleGroups: MuscleGroupCard[] = [
+  const muscleGroups = [
     {
-      id: "costas",
-      name: "Costas",
-      icon: <Grid2X2 className="h-10 w-10" />,
-      bgColor: "bg-blue-500"
+      id: 'legs',
+      name: 'Pernas',
+      description: 'Exercícios para quádriceps, posteriores e panturrilhas',
+      icon: <Users className="h-12 w-12 text-formfit-blue" />,
+      free: true
     },
     {
-      id: "peito",
-      name: "Peito",
-      icon: <Grid2X2 className="h-10 w-10" />,
-      bgColor: "bg-purple-500"
+      id: 'arms',
+      name: 'Braços',
+      description: 'Exercícios para bíceps, tríceps e antebraços',
+      icon: <Dumbbell className="h-12 w-12 text-formfit-purple" />,
+      free: false
     },
     {
-      id: "ombro",
-      name: "Ombro",
-      icon: <Grid2X2 className="h-10 w-10" />,
-      bgColor: "bg-indigo-500"
+      id: 'chest',
+      name: 'Peito',
+      description: 'Exercícios para peitoral e ombros',
+      icon: <Heart className="h-12 w-12 text-formfit-pink" />,
+      free: false
     },
     {
-      id: "pernas",
-      name: "Pernas",
-      icon: <Grid2X2 className="h-10 w-10" />,
-      bgColor: "bg-green-500"
+      id: 'abs',
+      name: 'Abdômen',
+      description: 'Exercícios para região abdominal',
+      icon: <Coffee className="h-12 w-12 text-formfit-green" />,
+      free: false
     },
     {
-      id: "biceps-triceps",
-      name: "Bíceps/Tríceps",
-      icon: <Grid2X2 className="h-10 w-10" />,
-      bgColor: "bg-yellow-500"
+      id: 'back',
+      name: 'Costas',
+      description: 'Exercícios para trapézio e lombar',
+      icon: <Dumbbell className="h-12 w-12 text-formfit-orange" />,
+      free: false
     },
     {
-      id: "abdomen",
-      name: "Abdômen",
-      icon: <Grid2X2 className="h-10 w-10" />,
-      bgColor: "bg-red-500"
+      id: 'fullbody',
+      name: 'Corpo Todo',
+      description: 'Exercícios completos para todos os grupos musculares',
+      icon: <Users className="h-12 w-12 text-formfit-blue" />,
+      free: false
     }
   ];
 
-  const handleSelectMuscleGroup = (group: MuscleGroupCard) => {
-    localStorage.setItem("selectedMuscleGroup", group.id);
-    navigate(`/workout/exercises/${group.id}`);
+  const handleGroupSelect = (groupId: string, isFree: boolean) => {
+    // If in guided experience and not free, show paywall
+    if (isGuidedExperience && !isFree) {
+      setShowPaywallDialog(true);
+      return;
+    }
     
+    setSelectedGroup(groupId);
+    localStorage.setItem("selectedMuscleGroup", groupId);
     toast({
-      title: `Grupo muscular: ${group.name}`,
-      description: `Selecionando exercícios para ${group.name.toLowerCase()}`,
+      title: "Grupo muscular selecionado",
+      description: `Você selecionou ${muscleGroups.find(g => g.id === groupId)?.name}.`,
       duration: 1500,
     });
+    
+    navigate(`/workout/exercises/${groupId}`);
+  };
+
+  const handleBack = () => {
+    navigate(-1);
   };
 
   return (
@@ -72,23 +98,65 @@ const MuscleGroups: React.FC = () => {
       <FormFitHeader />
       <main className="flex-grow">
         <div className="formfit-container py-8 px-4">
-          <h1 className="formfit-heading text-center mb-8">Quais áreas você quer treinar?</h1>
+          <div className="flex items-center mb-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBack}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="formfit-heading text-center flex-1">Quais áreas você quer treinar?</h1>
+          </div>
           
-          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {muscleGroups.map((group) => (
-              <div 
+              <Card 
                 key={group.id}
-                onClick={() => handleSelectMuscleGroup(group)}
-                className={`${group.bgColor} text-white p-6 rounded-lg shadow-md flex flex-col items-center justify-center space-y-2 hover:opacity-90 transition-opacity cursor-pointer h-32`}
+                className={`cursor-pointer hover:shadow-lg transition-shadow duration-300 ${
+                  isGuidedExperience && !group.free ? 'relative' : ''
+                }`}
+                onClick={() => handleGroupSelect(group.id, group.free)}
               >
-                {group.icon}
-                <span className="font-medium text-lg text-center">{group.name}</span>
-              </div>
+                {isGuidedExperience && !group.free && (
+                  <div className="absolute top-2 right-2 bg-amber-500 text-white px-2 py-1 rounded text-xs font-bold">
+                    Premium
+                  </div>
+                )}
+                <CardHeader className="flex flex-col items-center">
+                  {group.icon}
+                  <CardTitle className="mt-4">{group.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-center">
+                    {group.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       </main>
       <Footer />
+
+      {/* Paywall dialog */}
+      <Dialog open={showPaywallDialog} onOpenChange={setShowPaywallDialog}>
+        <DialogContent>
+          <DialogTitle>Conteúdo Premium</DialogTitle>
+          <DialogDescription>
+            Este tipo de treino está disponível apenas para assinantes. Assine agora para acessar todos os nossos treinos personalizados.
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaywallDialog(false)}>
+              Fechar
+            </Button>
+            <Button onClick={() => navigate("/subscription")}>
+              Assinar Já
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

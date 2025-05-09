@@ -1,107 +1,117 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
 import Footer from '@/components/Footer';
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { exerciseConfigs } from '@/components/pose-analysis/exercise-configs';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft } from 'lucide-react';
 
-interface ExerciseProgress {
-  [exerciseId: string]: number; // Stores series progress (0-3)
-}
-
-interface ExerciseData {
+interface Exercise {
   id: string;
   name: string;
-  muscles: string;
+  description: string;
+  muscleGroup: string;
+  level: 'iniciante' | 'intermediario' | 'avancado';
 }
 
-const MuscleGroupExercises = {
-  pernas: [
-    { id: "squat", name: "Agachamento ao ar livre ou na parede", muscles: "pernas" },
-    { id: "lunge", name: "Avanço parado", muscles: "pernas" },
-    { id: "sumo", name: "Agachamento sumô", muscles: "pernas" },
-    { id: "calf", name: "Elevação de panturrilha", muscles: "pernas" }
-  ],
-  peito: [
-    { id: "pushup", name: "Flexão de braço", muscles: "peito" },
-    { id: "dips", name: "Mergulho no banco", muscles: "peito" },
-    { id: "incline", name: "Flexão inclinada", muscles: "peito" },
-    { id: "flyes", name: "Crucifixo com elástico", muscles: "peito" }
-  ],
-  costas: [
-    { id: "row", name: "Remada com elástico", muscles: "costas" },
-    { id: "pullup", name: "Barra fixa", muscles: "costas" },
-    { id: "superman", name: "Superman", muscles: "costas" },
-    { id: "latpull", name: "Puxada com elástico", muscles: "costas" }
-  ],
-  ombro: [
-    { id: "press", name: "Elevação lateral", muscles: "ombro" },
-    { id: "frontrise", name: "Elevação frontal", muscles: "ombro" },
-    { id: "shrugs", name: "Encolhimento de ombros", muscles: "ombro" },
-    { id: "circle", name: "Círculos com os braços", muscles: "ombro" }
-  ],
-  "biceps-triceps": [
-    { id: "curl", name: "Rosca direta", muscles: "biceps" },
-    { id: "hammer", name: "Rosca martelo", muscles: "biceps" },
-    { id: "tricepsext", name: "Extensão de tríceps", muscles: "triceps" },
-    { id: "kickback", name: "Kickback de tríceps", muscles: "triceps" }
-  ],
-  abdomen: [
-    { id: "crunch", name: "Abdominal simples", muscles: "abdomen" },
-    { id: "plank", name: "Prancha", muscles: "abdomen" },
-    { id: "legrise", name: "Elevação de pernas", muscles: "abdomen" },
-    { id: "bicycle", name: "Bicicleta", muscles: "abdomen" }
-  ],
-};
-
 const ExercisesList: React.FC = () => {
-  const { muscleGroupId = "" } = useParams();
+  const { muscleGroupId } = useParams<{ muscleGroupId: string }>();
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [exercises, setExercises] = useState<ExerciseData[]>([]);
-  const [progress, setProgress] = useState<ExerciseProgress>({});
-  
+  // Sample exercises for each muscle group
   useEffect(() => {
-    // Get exercises for the selected muscle group
-    const groupExercises = MuscleGroupExercises[muscleGroupId as keyof typeof MuscleGroupExercises] || [];
-    setExercises(groupExercises);
-    
-    // Load progress from localStorage
-    const savedProgress = localStorage.getItem(`progress_${muscleGroupId}`);
-    if (savedProgress) {
-      setProgress(JSON.parse(savedProgress));
-    }
-  }, [muscleGroupId]);
-  
-  const getMuscleGroupName = (id: string): string => {
-    const names: {[key: string]: string} = {
-      "pernas": "Pernas",
-      "peito": "Peito", 
-      "costas": "Costas",
-      "ombro": "Ombro",
-      "biceps-triceps": "Bíceps/Tríceps",
-      "abdomen": "Abdômen"
+    // In a real app, this would be fetched from an API
+    const exercisesByGroup: Record<string, Exercise[]> = {
+      legs: [
+        { 
+          id: 'squat', 
+          name: 'Agachamento', 
+          description: 'Trabalha quadríceps, glúteos e core', 
+          muscleGroup: 'legs',
+          level: 'iniciante'
+        },
+        { 
+          id: 'lunge', 
+          name: 'Avanço', 
+          description: 'Trabalha quadríceps, glúteos e equilíbrio', 
+          muscleGroup: 'legs',
+          level: 'intermediario'
+        },
+        { 
+          id: 'calfRaises', 
+          name: 'Elevação de Panturrilha', 
+          description: 'Trabalha a musculatura da panturrilha', 
+          muscleGroup: 'legs',
+          level: 'iniciante'
+        },
+        { 
+          id: 'jumpSquat', 
+          name: 'Agachamento com Salto', 
+          description: 'Trabalha quadríceps, glúteos e potência', 
+          muscleGroup: 'legs',
+          level: 'avancado'
+        }
+      ],
+      arms: [
+        { 
+          id: 'curl', 
+          name: 'Rosca Bíceps', 
+          description: 'Trabalha bíceps e antebraços', 
+          muscleGroup: 'arms',
+          level: 'iniciante'
+        },
+        // ... other arm exercises
+      ],
+      // ... other muscle groups
     };
-    return names[id] || id;
-  };
-  
-  const getStatusColor = (exerciseId: string): string => {
-    const seriesCount = progress[exerciseId] || 0;
     
-    if (seriesCount >= 3) return "bg-green-500"; // Completed all series
-    if (seriesCount > 0) return "bg-yellow-500"; // In progress
-    return "bg-gray-200"; // Not started
+    // Set exercises for the current muscle group or default to legs
+    setExercises(exercisesByGroup[muscleGroupId || 'legs'] || exercisesByGroup.legs);
+  }, [muscleGroupId]);
+
+  const handleExerciseSelect = (exerciseId: string) => {
+    setSelectedExercise(exerciseId);
+    localStorage.setItem("selectedExercise", exerciseId);
+    toast({
+      title: "Exercício selecionado",
+      description: `Você selecionou ${exercises.find(e => e.id === exerciseId)?.name}.`,
+      duration: 1500,
+    });
   };
-  
-  const handleSelectExercise = (exercise: ExerciseData) => {
-    localStorage.setItem("currentExercise", JSON.stringify(exercise));
-    navigate(`/workout/exercise/${exercise.id}`);
+
+  const handleNext = () => {
+    if (selectedExercise) {
+      navigate(`/workout/exercise/${selectedExercise}`);
+    } else {
+      toast({
+        title: "Selecione um exercício",
+        description: "Escolha um exercício para continuar.",
+        variant: "destructive",
+      });
+    }
   };
-  
-  const handleBackToMuscleGroups = () => {
-    navigate('/workout/muscle-groups');
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  // Get the display name for the muscle group
+  const getMuscleGroupName = () => {
+    const groups: Record<string, string> = {
+      legs: 'Pernas',
+      arms: 'Braços',
+      chest: 'Peito',
+      abs: 'Abdômen',
+      back: 'Costas',
+      fullbody: 'Corpo Todo'
+    };
+    
+    return groups[muscleGroupId || 'legs'] || 'Exercícios';
   };
 
   return (
@@ -109,29 +119,72 @@ const ExercisesList: React.FC = () => {
       <FormFitHeader />
       <main className="flex-grow">
         <div className="formfit-container py-8 px-4">
-          <div className="flex items-center mb-6">
-            <button 
-              onClick={handleBackToMuscleGroups}
-              className="mr-3 p-2 rounded-full hover:bg-gray-200 transition-colors"
+          <div className="flex items-center mb-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBack}
+              className="mr-2"
             >
               <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="formfit-heading">Exercícios para {getMuscleGroupName(muscleGroupId)}</h1>
+            </Button>
+            <h1 className="formfit-heading text-center flex-1">Exercícios para {getMuscleGroupName()}</h1>
           </div>
           
-          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {exercises.map((exercise) => (
-              <div 
+              <Card 
                 key={exercise.id}
-                onClick={() => handleSelectExercise(exercise)}
-                className={`${getStatusColor(exercise.id)} p-5 rounded-lg shadow-md flex flex-col items-center justify-between cursor-pointer hover:opacity-90 transition-opacity h-32`}
+                className={`cursor-pointer transition-shadow duration-300 ${
+                  selectedExercise === exercise.id 
+                    ? 'ring-2 ring-formfit-blue shadow-lg' 
+                    : 'hover:shadow-md'
+                }`}
+                onClick={() => handleExerciseSelect(exercise.id)}
               >
-                <span className="font-medium text-center">{exercise.name}</span>
-                <div className="mt-4 text-xs font-bold bg-white bg-opacity-20 px-3 py-1 rounded-full">
-                  {progress[exercise.id] || 0}/3 séries
-                </div>
-              </div>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>{exercise.name}</CardTitle>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      exercise.level === 'iniciante' 
+                        ? 'bg-green-100 text-green-800' 
+                        : exercise.level === 'intermediario'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                    }`}>
+                      {exercise.level === 'iniciante' 
+                        ? 'Iniciante' 
+                        : exercise.level === 'intermediario' 
+                          ? 'Intermediário' 
+                          : 'Avançado'}
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    {exercise.description}
+                  </CardDescription>
+                </CardContent>
+                <CardFooter className="flex justify-end">
+                  {selectedExercise === exercise.id && (
+                    <div className="text-formfit-blue flex items-center">
+                      <span>Selecionado</span>
+                    </div>
+                  )}
+                </CardFooter>
+              </Card>
             ))}
+          </div>
+          
+          <div className="mt-12 flex justify-center">
+            <Button 
+              onClick={handleNext}
+              className="bg-formfit-blue hover:bg-formfit-blue/90 text-white font-medium px-8 py-6 rounded-lg text-lg"
+              size="lg"
+              disabled={!selectedExercise}
+            >
+              Ver Demonstração <ArrowRight className="ml-2" />
+            </Button>
           </div>
         </div>
       </main>

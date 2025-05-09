@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
 import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -45,12 +45,26 @@ const TrainingAvailability: React.FC = () => {
     navigate("/workout/muscle-groups");
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <FormFitHeader />
       <main className="flex-grow">
         <div className="formfit-container py-8 px-4">
-          <h1 className="formfit-heading text-center mb-8">Em quais dias você pode treinar?</h1>
+          <div className="flex items-center mb-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBack}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="formfit-heading text-center flex-1">Em quais dias você pode treinar?</h1>
+          </div>
           
           <div className="space-y-4 max-w-md mx-auto">
             {weekdays.map((day) => (

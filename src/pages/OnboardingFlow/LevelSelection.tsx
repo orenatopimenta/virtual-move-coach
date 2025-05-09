@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
 import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const LevelSelection: React.FC = () => {
@@ -28,19 +28,33 @@ const LevelSelection: React.FC = () => {
     }
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <FormFitHeader />
       <main className="flex-grow">
         <div className="formfit-container py-8 px-4">
-          <h1 className="formfit-heading text-center mb-8">Qual é o seu nível?</h1>
+          <div className="flex items-center mb-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBack}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="formfit-heading text-center flex-1">Qual é o seu nível?</h1>
+          </div>
           
           <div className="space-y-4 max-w-md mx-auto">
             <button 
               onClick={() => handleLevelSelect("iniciante")}
               className={`w-full p-4 rounded-lg flex items-center justify-between ${selectedLevel === "iniciante" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"}`}
             >
-              <span className="font-medium text-lg">🟩 Iniciante</span>
+              <span className="font-medium text-lg">Iniciante</span>
               {selectedLevel === "iniciante" && <Check className="h-5 w-5" />}
             </button>
             
@@ -48,7 +62,7 @@ const LevelSelection: React.FC = () => {
               onClick={() => handleLevelSelect("intermediario")}
               className={`w-full p-4 rounded-lg flex items-center justify-between ${selectedLevel === "intermediario" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"}`}
             >
-              <span className="font-medium text-lg">🟥 Intermediário</span>
+              <span className="font-medium text-lg">Intermediário</span>
               {selectedLevel === "intermediario" && <Check className="h-5 w-5" />}
             </button>
             
@@ -56,7 +70,7 @@ const LevelSelection: React.FC = () => {
               onClick={() => handleLevelSelect("avancado")}
               className={`w-full p-4 rounded-lg flex items-center justify-between ${selectedLevel === "avancado" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"}`}
             >
-              <span className="font-medium text-lg">🟥 Avançado</span>
+              <span className="font-medium text-lg">Avançado</span>
               {selectedLevel === "avancado" && <Check className="h-5 w-5" />}
             </button>
           </div>

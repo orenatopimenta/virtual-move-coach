@@ -70,12 +70,71 @@ export const exerciseConfigs: Record<string, ExerciseConfig> = {
     },
     animationUrl: '/animations/plank-animation.gif',
   },
+  // Adding aliases for exercise names with spaces/accents
+  agachamento: {
+    name: 'Agachamento',
+    requiredKeypoints: ['left_hip', 'left_knee', 'left_ankle', 'right_hip', 'right_knee', 'right_ankle'],
+    positioningInstructions: 'Afaste-se para a câmera ver suas pernas completas',
+    detectionMessage: 'AGACHAMENTO DETECTADO!',
+    thresholds: {
+      good: 90,
+      average: 110,
+    },
+    animationUrl: '/animations/squat-animation.gif',
+  },
+  avanço: {
+    name: 'Avanço',
+    requiredKeypoints: ['left_hip', 'left_knee', 'left_ankle', 'right_hip', 'right_knee', 'right_ankle'],
+    positioningInstructions: 'Afaste-se para a câmera ver suas pernas completas',
+    detectionMessage: 'AVANÇO DETECTADO!',
+    thresholds: {
+      good: 90,
+      average: 110,
+    },
+    animationUrl: '/animations/lunge-animation.gif',
+  },
+  flexão: {
+    name: 'Flexão',
+    requiredKeypoints: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist'],
+    positioningInstructions: 'Posicione a câmera para ver seu tronco e braços completos',
+    detectionMessage: 'FLEXÃO DETECTADA!',
+    thresholds: {
+      good: 90,
+      average: 110,
+    },
+    animationUrl: '/animations/pushup-animation.gif',
+  },
+  roscabíceps: {
+    name: 'Rosca Bíceps',
+    requiredKeypoints: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist'],
+    positioningInstructions: 'Posicione-se para que seus braços estejam visíveis',
+    detectionMessage: 'CONTRAÇÃO DETECTADA!',
+    thresholds: {
+      good: 50,
+      average: 70,
+    },
+    animationUrl: '/animations/curl-animation.gif',
+  },
+  prancha: {
+    name: 'Prancha',
+    requiredKeypoints: ['left_shoulder', 'left_hip', 'left_knee', 'left_ankle', 'right_shoulder', 'right_hip'],
+    positioningInstructions: 'Posicione a câmera lateralmente para ver seu corpo na horizontal',
+    detectionMessage: 'PRANCHA DETECTADA!',
+    thresholds: {
+      good: 170,
+      average: 160,
+    },
+    animationUrl: '/animations/plank-animation.gif',
+  },
 };
 
 // Get configuration for a specific exercise
 export const getExerciseConfig = (exerciseId: string): ExerciseConfig => {
-  // Default to squat if exercise is not found
-  return exerciseConfigs[exerciseId] || exerciseConfigs.squat;
+  // Convert to lowercase and remove spaces/accents for more consistent lookup
+  const normalizedId = exerciseId.toLowerCase().replace(/\s+/g, '');
+  
+  // Return the config for the normalized ID or default to squat
+  return exerciseConfigs[normalizedId] || exerciseConfigs.squat;
 };
 
 // Check if keypoints for specific exercise are visible

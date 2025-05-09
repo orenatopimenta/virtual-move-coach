@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { exerciseConfigs } from './pose-analysis/exercise-configs';
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Play } from 'lucide-react';
 
@@ -12,7 +11,6 @@ interface ExerciseAnimationProps {
 
 const ExerciseAnimation: React.FC<ExerciseAnimationProps> = ({ exerciseId, onComplete }) => {
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const config = exerciseConfigs[exerciseId] || exerciseConfigs.squat;
 
   useEffect(() => {
@@ -49,6 +47,20 @@ const ExerciseAnimation: React.FC<ExerciseAnimationProps> = ({ exerciseId, onCom
             <div className="animate-pulse text-4xl">👤</div>
           </div>
         );
+      case 'pushup':
+        return (
+          <div className="flex flex-col items-center">
+            <div className="mb-4 text-4xl font-bold">💪</div>
+            <div className="animate-bounce text-4xl">👤</div>
+          </div>
+        );
+      case 'lunge':
+        return (
+          <div className="flex flex-col items-center">
+            <div className="mb-4 text-4xl font-bold">🏃</div>
+            <div className="animate-pulse text-4xl">👤</div>
+          </div>
+        );
       default:
         return (
           <div className="animate-pulse text-6xl">🏋️</div>
@@ -69,13 +81,6 @@ const ExerciseAnimation: React.FC<ExerciseAnimationProps> = ({ exerciseId, onCom
               src={config.animationUrl} 
               alt={`Animação de ${config.name}`} 
               className="w-full h-full object-contain"
-              onError={() => {
-                toast({
-                  title: "Erro ao carregar animação",
-                  description: "Usando animação alternativa",
-                  duration: 2000,
-                });
-              }}
             />
           ) : renderFallbackAnimation()}
         </div>
