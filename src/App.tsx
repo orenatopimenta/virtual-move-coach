@@ -20,6 +20,7 @@ import ExerciciosPorArea from './pages/ExperienciaGuiada/ExerciciosPorArea';
 import Login from './pages/Login';
 import PrimeiroAcesso from './pages/PrimeiroAcesso';
 import Dashboard from './pages/Dashboard';
+import ExerciseModelTraining from './pages/ExerciseModelTraining';
 
 import { Toaster } from '@/components/ui/toaster';
 import './App.css';
@@ -52,6 +53,9 @@ function App() {
                 
         {/* Treino */}
         <Route path="/workout" element={<Workout />} />
+
+        {/* Modelo de Exercícios */}
+        <Route path="/exercise-models" element={<ExerciseModelTraining />} />
 
         {/* Fluxo de Onboarding (existente) */}
         <Route path="/onboarding" element={<TrainingAvailability />} />
