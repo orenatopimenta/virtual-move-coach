@@ -192,7 +192,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
           clearTimeout(requestRef.current);
         }
         requestRef.current = requestAnimationFrame(() => detectPose());
-      }, 1000/15); // Reduzir para 15 FPS para melhor performance
+      }, 200); // Reduzir para 15 FPS para melhor performance
     } catch (error) {
       console.error('Erro durante a detecção de pose:', error);
       onFeedback('Erro na detecção. Tente reiniciar o exercício.');
