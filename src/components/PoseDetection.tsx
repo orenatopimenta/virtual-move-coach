@@ -64,8 +64,9 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
             facingMode: 'user',
-            width: { ideal: 480 }, // Reduzir para melhorar performance
-            height: { ideal: 360 }
+            width: { ideal: 320 }, // Reduzir para melhorar performance
+            height: { ideal: 240 },
+            frameRate: { ideal: 10, max: 15 }
           },
           audio: false
         });
