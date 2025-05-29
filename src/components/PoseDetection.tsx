@@ -66,7 +66,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
             facingMode: 'user',
             width: { ideal: 320 }, // Reduzir para melhorar performance
             height: { ideal: 240 },
-            frameRate: { ideal: 10, max: 15 }
+            frameRate: { ideal: 5, max: 7 }
           },
           audio: false
         });
