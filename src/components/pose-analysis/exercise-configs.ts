@@ -1,4 +1,3 @@
-
 import { Keypoint } from '@tensorflow-models/pose-detection';
 
 export interface ExerciseConfig {
@@ -125,6 +124,39 @@ export const exerciseConfigs: Record<string, ExerciseConfig> = {
       average: 160,
     },
     animationUrl: '/animations/plank-animation.gif',
+  },
+  'levantamento-lateral': {
+    name: 'Levantamento Lateral',
+    requiredKeypoints: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist'],
+    positioningInstructions: 'Posicione-se de lado para a câmera ver seus ombros e braços',
+    detectionMessage: 'LEVANTAMENTO LATERAL DETECTADO!',
+    thresholds: {
+      good: 80, // ângulo do braço em relação ao tronco
+      average: 100,
+    },
+    animationUrl: '/animations/lateral-raise.gif',
+  },
+  'levantamento-frontal': {
+    name: 'Levantamento Frontal',
+    requiredKeypoints: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist'],
+    positioningInstructions: 'Posicione-se de lado para a câmera ver seus ombros e braços',
+    detectionMessage: 'LEVANTAMENTO FRONTAL DETECTADO!',
+    thresholds: {
+      good: 80,
+      average: 100,
+    },
+    animationUrl: '/animations/front-raise.gif',
+  },
+  'desenvolvimento': {
+    name: 'Desenvolvimento',
+    requiredKeypoints: ['left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder', 'right_elbow', 'right_wrist'],
+    positioningInstructions: 'Posicione-se de frente para a câmera, braços acima da cabeça',
+    detectionMessage: 'DESENVOLVIMENTO DETECTADO!',
+    thresholds: {
+      good: 60,
+      average: 90,
+    },
+    animationUrl: '/animations/shoulder-press.gif',
   },
 };
 

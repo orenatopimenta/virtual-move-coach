@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
@@ -65,7 +64,7 @@ const UserRegistration: React.FC = () => {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="formfit-heading text-center flex-1">Complete seu cadastro</h1>
+            <h1 className="formfit-heading text-center flex-1">Cadastro</h1>
           </div>
           
           <div className="max-w-md mx-auto space-y-6 bg-white p-6 rounded-lg shadow-sm">

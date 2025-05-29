@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Check } from 'lucide-react';
 
@@ -103,17 +102,17 @@ const PricingSection: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 max-w-4xl mx-auto">
           <PricingPlan 
-            name="Gratuito"
-            price="R$ 0"
+            name="Plano inicial"
+            price="R$ 29,90"
             period="/mês"
             description="Perfeito para experimentar e conhecer a plataforma."
             features={freeFeatures}
-            buttonText="Começar Grátis"
+            buttonText="Começar Agora"
           />
           
           <PricingPlan 
             name="Pro"
-            price="R$ 29,90"
+            price="R$ 79,90"
             period="/mês"
             description="Acesso completo a todos os recursos e novidades."
             features={proFeatures}

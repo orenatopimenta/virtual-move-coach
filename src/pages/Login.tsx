@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
@@ -7,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/lib/supabaseClient';
+import { ArrowLeft } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,20 +16,28 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simular login
-    setTimeout(() => {
-      setIsLoading(false);
-      localStorage.setItem('isLoggedIn', 'true');
+    // Login real com Supabase
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    setIsLoading(false);
+    if (error) {
       toast({
-        title: "Login bem-sucedido!",
-        description: "Bem-vindo ao FormFit AI",
+        title: "Erro ao fazer login!",
+        description: error.message,
+        variant: "destructive"
       });
-      navigate('/dashboard');
-    }, 1000);
+      return;
+    }
+    toast({
+      title: "Login bem-sucedido!",
+      description: "Bem-vindo ao AI Trainer",
+    });
+    navigate('/dashboard');
   };
   
   return (
@@ -36,7 +45,17 @@ const Login: React.FC = () => {
       <FormFitHeader />
       <main className="flex-grow flex items-center justify-center">
         <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-          <h1 className="text-2xl font-bold text-center mb-6">Login</h1>
+          <div className="mb-4 flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </div>
+          <h1 className="formfit-heading text-center flex-1">Login</h1>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

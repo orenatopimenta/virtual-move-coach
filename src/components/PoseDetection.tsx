@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import '@tensorflow/tfjs-core';
@@ -672,7 +671,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   };
 
   return (
-    <div className="relative">
+    <div className="relative h-full">
       {/* Hidden video for pose detection */}
       <video
         ref={videoRef}
@@ -693,11 +692,12 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       <canvas 
         ref={canvasRef}
         className="w-full h-full object-cover rounded-lg"
+        style={{height: '100%', width: '100%'}}
       />
       
       {/* Loading overlays */}
       {(isModelLoading || isWebcamLoading) && (
-        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white">
+        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white min-h-[180px] sm:min-h-[220px]">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mb-4"></div>
           <p>{isWebcamLoading ? "Acessando câmera..." : "Carregando modelo de IA..."}</p>
         </div>
@@ -735,13 +735,6 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         {detectionQuality === 'poor' ? 'Detecção Ruim' : 
         detectionQuality === 'good' ? 'Detecção Boa' : 'Detecção Excelente'}
       </div>
-      
-      {/* Instrução de posicionamento - Exercise specific */}
-      {detectionQuality === 'poor' && exerciseConfigRef.current && (
-        <div className="absolute top-4 right-4 bg-blue-500 px-4 py-2 rounded-lg text-white text-sm font-bold animate-bounce">
-          {exerciseConfigRef.current.positioningInstructions}
-        </div>
-      )}
     </div>
   );
 };

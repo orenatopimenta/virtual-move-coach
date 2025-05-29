@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface TestimonialProps {
@@ -32,41 +31,7 @@ const Testimonial: React.FC<TestimonialProps> = ({ quote, author, role, image })
 };
 
 const TestimonialsSection: React.FC = () => {
-  return (
-    <section id="testimonials" className="formfit-section bg-gray-50">
-      <div className="formfit-container">
-        <div className="text-center mb-16">
-          <h2 className="formfit-heading">
-            O que nossos usuários estão dizendo
-          </h2>
-          <p className="text-gray-600 text-lg max-w-3xl mx-auto">
-            Milhares de pessoas já transformaram seus treinos com o FormFit AI
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Testimonial
-            quote="Finalmente consegui corrigir minha forma nos agachamentos. O feedback em tempo real é incrível e me ajudou a evitar dores nas costas."
-            author="Carlos Silva"
-            role="Usuário há 3 meses"
-            image=""
-          />
-          <Testimonial
-            quote="Como personal trainer, recomendo o FormFit AI para meus clientes treinarem nos dias em que não estamos juntos. É como ter um segundo par de olhos observando a técnica deles."
-            author="Fernanda Oliveira"
-            role="Personal Trainer"
-            image=""
-          />
-          <Testimonial
-            quote="Treinando em casa durante a pandemia, o FormFit AI foi essencial para manter minha motivação e garantir que eu não estivesse fazendo os exercícios de forma errada."
-            author="Ricardo Mendes"
-            role="Usuário há 6 meses"
-            image=""
-          />
-        </div>
-      </div>
-    </section>
-  );
+  return null;
 };
 
 export default TestimonialsSection;

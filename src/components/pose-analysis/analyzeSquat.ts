@@ -1,4 +1,3 @@
-
 import { Keypoint } from '@tensorflow-models/pose-detection';
 
 /**
@@ -21,7 +20,8 @@ export const analyzeSquat = (
   setExecutionQuality: React.Dispatch<React.SetStateAction<'good' | 'average' | 'poor' | null>>,
   onRepetitionCount: (quality: 'good' | 'average' | 'poor') => void,
   onFeedback: (message: string) => void,
-  updateFeedbackWithDebounce: (message: string, minInterval: number) => void
+  updateFeedbackWithDebounce: (message: string, minInterval: number) => void,
+  onRepIndicatorExtracted?: (indicator: any) => void
 ) => {
   // Create a dictionary of keypoints for easier access
   const keypointDict: {[key: string]: Keypoint} = {};
@@ -71,79 +71,114 @@ export const analyzeSquat = (
     }
   }
   
-  // Try to analyze even with poor visibility - MUCH MORE PERMISSIVE
-  if (leftHip && leftKnee && leftAnkle && leftHip.score && leftKnee.score && leftAnkle.score) {
-    // Calculate knee angles - use only left side if necessary
+  const now = Date.now();
+  const minInterval = 300; // 300ms entre repetições
+
+  const leftOk = leftHip?.score > 0.5 && leftKnee?.score > 0.5 && leftAnkle?.score > 0.5;
+  const rightOk = rightHip?.score > 0.5 && rightKnee?.score > 0.5 && rightAnkle?.score > 0.5;
+
+  let kneeAngle = null;
+  if (leftOk && rightOk) {
     const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
-    let kneeAngle = leftKneeAngle;
-    
-    // If right side is also visible, calculate average
-    if (rightHip && rightKnee && rightAnkle && 
-        rightHip.score && rightKnee.score && rightAnkle.score &&
-        rightHip.score > 0.1 && rightKnee.score > 0.1 && rightAnkle.score > 0.1) {
-      const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
-      kneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+    const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+    kneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+  } else if (leftOk) {
+    kneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+  } else if (rightOk) {
+    kneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+  }
+
+  const downThreshold = 120; // ângulo para considerar agachado
+  const upThreshold = 155;   // ângulo para considerar em pé
+
+  // Variáveis estáticas para armazenar dados da repetição
+  if (!(analyzeSquat as any)._repData) {
+    (analyzeSquat as any)._repData = {
+      angles: [],
+      timestamps: [],
+      lastDirection: null,
+      lastAngle: null,
+      upStartTime: null,
+      downStartTime: null,
+      upAngles: [],
+      downAngles: [],
+    };
+  }
+  const repData = (analyzeSquat as any)._repData;
+
+  if (kneeAngle !== null) {
+    const now = Date.now();
+    repData.angles.push(kneeAngle);
+    repData.timestamps.push(now);
+    // Detectar direção do movimento (subida ou descida)
+    let direction: 'up' | 'down' | null = null;
+    if (repData.lastAngle !== null) {
+      if (kneeAngle < repData.lastAngle) direction = 'down'; // descendo (agachando)
+      else if (kneeAngle > repData.lastAngle) direction = 'up'; // subindo
     }
-    
-    // Detailed log for analysis
-    console.log(`SQUAT ANALYSIS - Current angle: ${kneeAngle.toFixed(1)}°, isDown: ${isDown}, squatDetected: ${squatDetected}`);
-    
-    // HIGHLY SENSITIVE - detect any significant knee bend
-    // Squat position detection - much more sensitive (angle up to 145°)
-    if (kneeAngle < 145 && !isDown) {
-      // Immediate visual update
-      setSquatDetected(true);
-      
-      console.log(`🔍 DETECTED: Possible squat initiated - Angle: ${kneeAngle.toFixed(1)}°`);
-      
-      // MUCH MORE REACTIVE: No need to confirm with additional frames
-      console.log(`🔴 LOW POSITION IMMEDIATELY CONFIRMED! Angle: ${kneeAngle.toFixed(1)}°`);
+    repData.lastAngle = kneeAngle;
+    // Marcar início de subida/descida
+    if (direction === 'down' && repData.lastDirection !== 'down') {
+      repData.downStartTime = now;
+      repData.downAngles = [];
+    }
+    if (direction === 'up' && repData.lastDirection !== 'up') {
+      repData.upStartTime = now;
+      repData.upAngles = [];
+    }
+    if (direction === 'down') repData.downAngles.push({ angle: kneeAngle, time: now });
+    if (direction === 'up') repData.upAngles.push({ angle: kneeAngle, time: now });
+    repData.lastDirection = direction;
+    // Se estava em pé e desceu (agachou)
+    if (!isDown && kneeAngle < downThreshold) {
       setIsDown(true);
-      frameCountRef.current = 0;
-      
-      // Determine execution quality based on angle
-      if (kneeAngle < 110) {
-        setExecutionQuality('good');
-        updateFeedbackWithDebounce('Excelente profundidade no agachamento!', 1000);
-      } else if (kneeAngle < 130) {
-        setExecutionQuality('average');
-        updateFeedbackWithDebounce('Bom agachamento, tente descer um pouco mais.', 1000);
-      } else {
-        setExecutionQuality('poor');
-        updateFeedbackWithDebounce('Agachamento detectado! Tente descer mais.', 1000);
-      }
-    } 
-    // Standing position detection - much more sensitive
-    else if (kneeAngle > 160 && isDown) {
-      console.log(`🟢 REP IMMEDIATELY COMPLETED! Angle: ${kneeAngle.toFixed(1)}°`);
+      setSquatDetected(true);
+    }
+    // Se estava agachado e voltou a ficar em pé, conta repetição
+    if (isDown && kneeAngle > upThreshold && now - lastRepCountTimeRef.current > minInterval) {
       setIsDown(false);
       setSquatDetected(false);
-      frameCountRef.current = 0;
-      
-      // Ensure enough time has passed since last rep count to avoid duplicates
-      const now = Date.now();
-      if (now - lastRepCountTimeRef.current > 500) {
-        lastRepCountTimeRef.current = now;
-        
-        // Determine rep quality based on minimum angle achieved during the rep
-        // Here we're just using a simple heuristic, could be improved with more data
-        let repQuality: 'good' | 'average' | 'poor' = 'average';
-        
-        // Count the repetition
-        onRepetitionCount(repQuality);
-        updateFeedbackWithDebounce('Boa! Repetição contabilizada.', 1000);
-        setExecutionQuality(null);
-        
-        console.log("🎯 Calling repetition callback - counting squat rep");
+      // Calcular métricas da repetição
+      const minAngle = Math.min(...repData.angles);
+      const maxAngle = Math.max(...repData.angles);
+      const executionTime = (repData.timestamps[repData.timestamps.length - 1] - repData.timestamps[0]) / 1000;
+      const amplitude = Math.abs(maxAngle - minAngle);
+      // Velocidade média de descida
+      let downVelocity = 0;
+      if (repData.downAngles.length > 1 && repData.downStartTime) {
+        const downTime = (repData.downAngles[repData.downAngles.length - 1].time - repData.downStartTime) / 1000;
+        const downAmp = Math.abs(repData.downAngles[0].angle - repData.downAngles[repData.downAngles.length - 1].angle);
+        downVelocity = downAmp / (downTime || 1);
       }
-    }
-    // If in the middle of a squat, maintain visual state
-    else if (kneeAngle < 150) {
-      setSquatDetected(true);
-    }
-    // If knee is almost straight, reset visual
-    else if (kneeAngle > 165) {
-      setSquatDetected(false);
+      // Velocidade média de subida
+      let upVelocity = 0;
+      if (repData.upAngles.length > 1 && repData.upStartTime) {
+        const upTime = (repData.upAngles[repData.upAngles.length - 1].time - repData.upStartTime) / 1000;
+        const upAmp = Math.abs(repData.upAngles[0].angle - repData.upAngles[repData.upAngles.length - 1].angle);
+        upVelocity = upAmp / (upTime || 1);
+      }
+      // Enviar para callback
+      if (onRepIndicatorExtracted) {
+        onRepIndicatorExtracted({
+          minAngle,
+          maxAngle,
+          executionTime,
+          amplitude,
+          upVelocity,
+          downVelocity,
+        });
+      }
+      // Limpar dados para próxima repetição
+      repData.angles = [];
+      repData.timestamps = [];
+      repData.upAngles = [];
+      repData.downAngles = [];
+      repData.upStartTime = null;
+      repData.downStartTime = null;
+      repData.lastDirection = null;
+      repData.lastAngle = null;
+      onRepetitionCount('good');
+      lastRepCountTimeRef.current = now;
     }
   } else {
     // More detailed feedback when there's poor detection

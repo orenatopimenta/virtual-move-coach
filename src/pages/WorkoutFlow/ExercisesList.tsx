@@ -86,6 +86,8 @@ const ExercisesList: React.FC = () => {
 
   const handleNext = () => {
     if (selectedExercise) {
+      const selected = exercises.find(e => e.id === selectedExercise);
+      localStorage.setItem("currentExercise", JSON.stringify({ id: selectedExercise, name: selected?.name || '' }));
       navigate(`/workout/exercise/${selectedExercise}`);
     } else {
       toast({

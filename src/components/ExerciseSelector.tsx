@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BicepsFlexed, Dumbbell } from 'lucide-react';
@@ -24,6 +23,12 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({ onSelectExercise })
       icon: <User className="h-12 w-12 text-formfit-blue" />
     },
     {
+      id: 'afundo',
+      name: 'Avanço',
+      description: 'Dê um passo à frente e agache, mantendo o tronco ereto.',
+      icon: <User className="h-12 w-12 text-formfit-blue" />
+    },
+    {
       id: 'push-up',
       name: 'Flexão de Braço',
       description: 'Mantenha o corpo alinhado e dobre os cotovelos para descer.',
@@ -45,7 +50,7 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({ onSelectExercise })
           <Card 
             key={exercise.id}
             className="cursor-pointer hover:shadow-lg transition-shadow duration-300"
-            onClick={() => onSelectExercise(exercise.name)}
+            onClick={() => onSelectExercise(exercise.id)}
           >
             <CardHeader className="flex flex-col items-center">
               {exercise.icon}

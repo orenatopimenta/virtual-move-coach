@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
@@ -37,7 +36,7 @@ const Subscription: React.FC = () => {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="formfit-heading text-center flex-1">Escolha seu plano</h1>
+            <h1 className="formfit-heading text-center flex-1">Assinatura</h1>
           </div>
           
           <div className="text-center mb-12 max-w-2xl mx-auto">

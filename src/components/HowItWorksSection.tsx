@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface StepCardProps {
@@ -35,7 +34,7 @@ const HowItWorksSection: React.FC = () => {
       <div className="formfit-container">
         <div className="text-center mb-16">
           <h2 className="formfit-heading">
-            Como o <span className="bg-gradient-to-r from-formfit-blue to-formfit-purple bg-clip-text text-transparent">FormFit AI</span> funciona
+            Como o <span className="bg-gradient-to-r from-formfit-blue to-formfit-purple bg-clip-text text-transparent">AI Trainer</span> funciona
           </h2>
           <p className="text-gray-600 text-lg max-w-3xl mx-auto">
             Transforme seu smartphone em um personal trainer com apenas alguns passos simples

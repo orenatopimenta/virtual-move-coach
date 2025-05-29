@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
@@ -40,6 +39,13 @@ const MuscleGroups: React.FC = () => {
       description: 'Exercícios para bíceps, tríceps e antebraços',
       icon: <Dumbbell className="h-12 w-12 text-formfit-purple" />,
       free: false
+    },
+    {
+      id: 'shoulders',
+      name: 'Ombros',
+      description: 'Exercícios para deltoides e ombros',
+      icon: <Dumbbell className="h-12 w-12 text-yellow-400" />,
+      free: true
     },
     {
       id: 'chest',

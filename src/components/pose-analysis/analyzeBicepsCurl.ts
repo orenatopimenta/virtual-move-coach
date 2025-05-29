@@ -1,4 +1,3 @@
-
 import { Keypoint } from '@tensorflow-models/pose-detection';
 import { calculateAngle } from './utils';
 
@@ -14,7 +13,8 @@ export const analyzeBicepsCurl = (
   onRepetitionCount: (quality: 'good' | 'average' | 'poor') => void,
   updateFeedbackWithDebounce: (message: string, minInterval: number) => void,
   onFeedback: (message: string) => void,
-  checkStability: (prevKeypoints: Keypoint[], currentKeypoints: {[key: string]: Keypoint}) => boolean
+  checkStability: (prevKeypoints: Keypoint[], currentKeypoints: {[key: string]: Keypoint}) => boolean,
+  onRepIndicatorExtracted?: (indicator: any) => void
 ) => {
   // Create a dictionary of keypoints for easier access
   const keypointDict: {[key: string]: Keypoint} = {};
@@ -47,6 +47,48 @@ export const analyzeBicepsCurl = (
     // Log information for debugging
     console.log(`BICEPS CURL ANALYSIS - Elbow angle: ${elbowAngle.toFixed(1)}°, isDown: ${isDown}`);
     
+    // Variáveis estáticas para armazenar dados da repetição
+    // (usando propriedades do próprio analyzeBicepsCurl para manter estado entre execuções)
+    if (!(analyzeBicepsCurl as any)._repData) {
+      (analyzeBicepsCurl as any)._repData = {
+        angles: [],
+        timestamps: [],
+        lastDirection: null,
+        lastAngle: null,
+        upStartTime: null,
+        downStartTime: null,
+        upAngles: [],
+        downAngles: [],
+      };
+    }
+    const repData = (analyzeBicepsCurl as any)._repData;
+
+    // Armazene o ângulo e timestamp para análise da repetição
+    const now = Date.now();
+    repData.angles.push(elbowAngle);
+    repData.timestamps.push(now);
+
+    // Detectar direção do movimento (subida ou descida)
+    let direction: 'up' | 'down' | null = null;
+    if (repData.lastAngle !== null) {
+      if (elbowAngle < repData.lastAngle) direction = 'up';
+      else if (elbowAngle > repData.lastAngle) direction = 'down';
+    }
+    repData.lastAngle = elbowAngle;
+
+    // Marcar início de subida/descida
+    if (direction === 'up' && repData.lastDirection !== 'up') {
+      repData.upStartTime = now;
+      repData.upAngles = [];
+    }
+    if (direction === 'down' && repData.lastDirection !== 'down') {
+      repData.downStartTime = now;
+      repData.downAngles = [];
+    }
+    if (direction === 'up') repData.upAngles.push({ angle: elbowAngle, time: now });
+    if (direction === 'down') repData.downAngles.push({ angle: elbowAngle, time: now });
+    repData.lastDirection = direction;
+
     // Check if arm is bent (curl up position)
     if (elbowAngle < 80 && !isDown) {
       console.log(`🔍 DETECTED: Curl up position - Angle: ${elbowAngle.toFixed(1)}°`);
@@ -72,9 +114,48 @@ export const analyzeBicepsCurl = (
       setIsDown(false);
       
       // Ensure enough time has passed since last rep count to avoid duplicates
-      const now = Date.now();
       if (now - lastRepCountTimeRef.current > 500) {
         lastRepCountTimeRef.current = now;
+        
+        // Calcular métricas da repetição
+        const minAngle = Math.min(...repData.angles);
+        const maxAngle = Math.max(...repData.angles);
+        const executionTime = (repData.timestamps[repData.timestamps.length - 1] - repData.timestamps[0]) / 1000;
+        const amplitude = Math.abs(maxAngle - minAngle);
+        // Velocidade média de subida
+        let upVelocity = 0;
+        if (repData.upAngles.length > 1 && repData.upStartTime) {
+          const upTime = (repData.upAngles[repData.upAngles.length - 1].time - repData.upStartTime) / 1000;
+          const upAmp = Math.abs(repData.upAngles[0].angle - repData.upAngles[repData.upAngles.length - 1].angle);
+          upVelocity = upAmp / (upTime || 1);
+        }
+        // Velocidade média de descida
+        let downVelocity = 0;
+        if (repData.downAngles.length > 1 && repData.downStartTime) {
+          const downTime = (repData.downAngles[repData.downAngles.length - 1].time - repData.downStartTime) / 1000;
+          const downAmp = Math.abs(repData.downAngles[0].angle - repData.downAngles[repData.downAngles.length - 1].angle);
+          downVelocity = downAmp / (downTime || 1);
+        }
+        // Enviar para callback
+        if (onRepIndicatorExtracted) {
+          onRepIndicatorExtracted({
+            minAngle,
+            maxAngle,
+            executionTime,
+            amplitude,
+            upVelocity,
+            downVelocity,
+          });
+        }
+        // Limpar dados para próxima repetição
+        repData.angles = [];
+        repData.timestamps = [];
+        repData.upAngles = [];
+        repData.downAngles = [];
+        repData.upStartTime = null;
+        repData.downStartTime = null;
+        repData.lastDirection = null;
+        repData.lastAngle = null;
         
         // Determine quality based on minimum angle and stability
         // Using average quality as default

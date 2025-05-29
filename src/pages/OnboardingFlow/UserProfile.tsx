@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
@@ -6,10 +5,13 @@ import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeft, Minus, Plus, Radio } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const UserProfile: React.FC = () => {
   const [gender, setGender] = useState<string | null>(null);
   const [age, setAge] = useState(25);
+  const [name, setName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -30,18 +32,36 @@ const UserProfile: React.FC = () => {
     if (age > 16) setAge(prev => prev - 1);
   };
 
-  const handleNext = () => {
-    if (gender) {
-      localStorage.setItem("userGender", gender);
-      localStorage.setItem("userAge", age.toString());
-      navigate("/onboarding/availability");
-    } else {
+  const handleRegister = async () => {
+    if (!name || !gender) {
       toast({
-        title: "Selecione um gênero",
-        description: "Precisamos desta informação para continuar.",
-        variant: "destructive",
+        title: 'Preencha todos os campos obrigatórios',
+        variant: 'destructive',
       });
+      return;
     }
+    setIsLoading(true);
+    // Pega usuário autenticado
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (!user || userError) {
+      setIsLoading(false);
+      toast({ title: 'Usuário não autenticado', variant: 'destructive' });
+      return;
+    }
+    // Salva perfil
+    const { error: profileError } = await supabase.from('user_profiles').upsert({
+      id: user.id,
+      full_name: name,
+      gender,
+      age
+    });
+    setIsLoading(false);
+    if (profileError) {
+      toast({ title: 'Erro ao salvar perfil', description: profileError.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Cadastro realizado!', description: 'Bem-vindo ao AI Trainer!' });
+    navigate('/dashboard');
   };
 
   const handleBack = () => {
@@ -62,7 +82,7 @@ const UserProfile: React.FC = () => {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="formfit-heading text-center flex-1">Precisamos saber um pouco mais sobre você</h1>
+            <h1 className="formfit-heading text-center flex-1">Perfil</h1>
           </div>
           
           <div className="space-y-8 max-w-md mx-auto">
@@ -117,15 +137,27 @@ const UserProfile: React.FC = () => {
                 </button>
               </div>
             </div>
+            <div className="space-y-2">
+              <label className="block font-medium">Nome</label>
+              <input
+                className="border rounded px-3 py-2 w-full"
+                type="text"
+                placeholder="Digite seu nome"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+              />
+            </div>
           </div>
           
           <div className="mt-12 flex justify-center">
             <Button 
-              onClick={handleNext}
-              className="bg-formfit-blue hover:bg-formfit-blue/90 text-white font-medium px-8 py-6 rounded-lg text-lg"
+              onClick={handleRegister}
+              className="bg-green-600 hover:bg-green-700 text-white font-medium px-8 py-6 rounded-lg text-lg"
               size="lg"
+              disabled={isLoading}
             >
-              Próximo <ArrowRight className="ml-2" />
+              {isLoading ? 'Cadastrando...' : 'Cadastrar'}
             </Button>
           </div>
         </div>

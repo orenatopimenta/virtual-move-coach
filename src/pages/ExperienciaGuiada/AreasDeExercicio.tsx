@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
@@ -18,7 +17,11 @@ const AreasDeExercicio: React.FC = () => {
   }, []);
   
   const handleBack = () => {
-    navigate('/');
+    if (isLoggedIn) {
+      navigate('/dashboard');
+    } else {
+      navigate(-1);
+    }
   };
   
   const handleGoToDashboard = () => {
@@ -36,6 +39,12 @@ const AreasDeExercicio: React.FC = () => {
       id: 'braco',
       name: 'Braços',
       color: 'bg-gradient-to-r from-red-400 to-red-600',
+      available: isLoggedIn // Available if logged in
+    },
+    {
+      id: 'ombros',
+      name: 'Ombros',
+      color: 'bg-gradient-to-r from-orange-400 to-orange-600',
       available: isLoggedIn // Available if logged in
     },
     {
@@ -72,7 +81,7 @@ const AreasDeExercicio: React.FC = () => {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="formfit-heading text-center flex-1">Quais áreas você quer treinar?</h1>
+            <h1 className="formfit-heading text-center flex-1">Treinos</h1>
             {isLoggedIn && (
               <Button 
                 variant="ghost" 
@@ -86,25 +95,15 @@ const AreasDeExercicio: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md mx-auto">
-            {muscleGroups.map((group) => (
-              <div 
+            {muscleGroups.map(group => (
+              <button
                 key={group.id}
-                className={`relative h-24 rounded-xl shadow-md overflow-hidden transition-transform hover:scale-105 ${group.color}`}
+                className={`w-full mb-4 rounded-lg shadow-md font-bold text-white ${group.color} py-4 text-lg transition-all duration-200 ${!group.available ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={!group.available}
+                onClick={() => group.available && navigate(`/treinos/exercicios/${group.id}`)}
               >
-                {group.available ? (
-                  <Link 
-                    to={`/experiencia-guiada/exercicios/${group.id}`}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <span className="text-white font-bold text-xl">{group.name}</span>
-                  </Link>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-between px-6">
-                    <span className="text-white font-bold text-xl">{group.name}</span>
-                    <Lock className="h-6 w-6 text-white" />
-                  </div>
-                )}
-              </div>
+                {group.name}
+              </button>
             ))}
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +16,7 @@ const CTASection: React.FC = () => {
     setTimeout(() => {
       toast({
         title: "Inscrição realizada com sucesso!",
-        description: "Você receberá atualizações sobre o lançamento do FormFit AI.",
+        description: "Você receberá atualizações sobre o lançamento do AI Trainer.",
       });
       setEmail('');
       setIsSubmitting(false);
@@ -32,7 +31,7 @@ const CTASection: React.FC = () => {
             Pronto para transformar seus treinos?
           </h2>
           <p className="text-lg md:text-xl mb-8 opacity-90">
-            Junte-se à nossa lista de espera e seja um dos primeiros a experimentar o FormFit AI
+            Junte-se à nossa lista de espera e seja um dos primeiros a experimentar o AI Trainer
           </p>
           
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto">

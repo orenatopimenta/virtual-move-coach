@@ -1,196 +1,124 @@
-
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
-import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, Check, AlertTriangle, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Timer, Trophy, CheckCircle } from 'lucide-react';
 
-interface RepStats {
-  total: number;
-  good: number;
-  average: number;
-  poor: number;
-}
-
-interface SummaryState {
+interface WorkoutSummaryData {
   elapsedTime: number;
   series: number;
-  repStats: RepStats;
+  repStats: {
+    total: number;
+    good: number;
+    average: number;
+    poor: number;
+  };
 }
 
 const WorkoutSummary: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  
-  // Get data from location state or use defaults
-  const { elapsedTime = 0, series = 0, repStats = { total: 0, good: 0, average: 0, poor: 0 } } = 
-    (location.state as SummaryState) || {};
-  
+  const navigate = useNavigate();
+  const workoutData = location.state as WorkoutSummaryData;
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-  
-  const calculatePercentage = (value: number): number => {
-    return repStats.total > 0 ? Math.round((value / repStats.total) * 100) : 0;
-  };
-  
-  const getRecommendation = (): string => {
-    const goodPercentage = calculatePercentage(repStats.good);
-    
-    if (goodPercentage >= 80) {
-      return "Excelente desempenho! Continue com exercícios mais desafiadores.";
-    } else if (goodPercentage >= 60) {
-      return "Bom trabalho! Concentre-se em melhorar a técnica.";
-    } else {
-      return "Considere reduzir a intensidade e focar na técnica correta.";
-    }
-  };
-  
-  const handleGoToHistory = () => {
-    // In a real app, this would go to a history page
-    // For now, just go back to muscle groups
-    navigate('/workout/muscle-groups');
-  };
-  
-  const handleGoToHome = () => {
-    navigate('/');
+
+  const calculateQuality = () => {
+    if (!workoutData?.repStats) return 0;
+    const { good, total } = workoutData.repStats;
+    return total > 0 ? Math.round((good / total) * 100) : 0;
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <FormFitHeader />
+      
       <main className="flex-grow">
         <div className="formfit-container py-8 px-4">
           <div className="flex items-center mb-6">
-            <button 
-              onClick={handleGoToHome}
-              className="mr-3 p-2 rounded-full hover:bg-gray-200 transition-colors"
+            <button
+              onClick={() => navigate('/treinos')}
+              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="formfit-heading">Resumo do Treino</h1>
+            <h1 className="formfit-heading text-center flex-1">Resumo do Treino</h1>
           </div>
-          
-          <div className="space-y-6 max-w-md mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calendar className="mr-2 h-5 w-5" /> Estatísticas do Treino
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-100 p-4 rounded-lg">
-                    <div className="text-sm text-gray-500">Tempo Total</div>
-                    <div className="text-2xl font-bold">{formatTime(elapsedTime)}</div>
-                  </div>
-                  <div className="bg-gray-100 p-4 rounded-lg">
-                    <div className="text-sm text-gray-500">Séries Completadas</div>
-                    <div className="text-2xl font-bold">{series}/3</div>
-                  </div>
-                  <div className="bg-gray-100 p-4 rounded-lg">
-                    <div className="text-sm text-gray-500">Repetições Totais</div>
-                    <div className="text-2xl font-bold">{repStats.total}</div>
-                  </div>
-                  <div className="bg-gray-100 p-4 rounded-lg">
-                    <div className="text-sm text-gray-500">Calorias (est.)</div>
-                    <div className="text-2xl font-bold">{Math.round(elapsedTime * 0.15)}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-center justify-center mb-6">
+              <Trophy className="h-12 w-12 text-yellow-500" />
+            </div>
             
-            <Card>
-              <CardHeader>
-                <CardTitle>Qualidade das Repetições</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-green-500 p-1 rounded-full mr-2">
-                        <Check className="h-4 w-4 text-white" />
-                      </div>
-                      <span>Corretas</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="font-bold mr-2">{repStats.good}</span>
-                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-green-500"
-                          style={{ width: `${calculatePercentage(repStats.good)}%` }}
-                        ></div>
-                      </div>
-                    </div>
+            <div className="space-y-6">
+              {/* Tempo total */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <Timer className="h-6 w-6 text-formfit-blue mr-3" />
+                  <span className="font-medium">Tempo Total</span>
+                </div>
+                <span className="text-xl font-bold">{formatTime(workoutData?.elapsedTime || 0)}</span>
+              </div>
+
+              {/* Séries completadas */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="h-6 w-6 text-green-500 mr-3" />
+                  <span className="font-medium">Séries Completadas</span>
+                </div>
+                <span className="text-xl font-bold">{workoutData?.series || 0}/3</span>
+              </div>
+
+              {/* Repetições */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-medium mb-3">Repetições</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Total</span>
+                    <span className="font-bold">{workoutData?.repStats?.total || 0}</span>
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-yellow-500 p-1 rounded-full mr-2">
-                        <AlertTriangle className="h-4 w-4 text-white" />
-                      </div>
-                      <span>Aceitáveis</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="font-bold mr-2">{repStats.average}</span>
-                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-yellow-500"
-                          style={{ width: `${calculatePercentage(repStats.average)}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-600">Boa execução</span>
+                    <span className="font-bold">{workoutData?.repStats?.good || 0}</span>
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-red-500 p-1 rounded-full mr-2">
-                        <X className="h-4 w-4 text-white" />
-                      </div>
-                      <span>Incorretas</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="font-bold mr-2">{repStats.poor}</span>
-                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-red-500"
-                          style={{ width: `${calculatePercentage(repStats.poor)}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-yellow-600">Execução média</span>
+                    <span className="font-bold">{workoutData?.repStats?.average || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-600">Execução ruim</span>
+                    <span className="font-bold">{workoutData?.repStats?.poor || 0}</span>
                   </div>
                 </div>
-                
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                  <h3 className="font-medium mb-1">Recomendação</h3>
-                  <p className="text-sm">{getRecommendation()}</p>
+              </div>
+
+              {/* Qualidade geral */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-medium mb-2">Qualidade Geral</h3>
+                <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div 
+                    className="bg-formfit-blue h-4 rounded-full transition-all duration-500"
+                    style={{ width: `${calculateQuality()}%` }}
+                  ></div>
                 </div>
-              </CardContent>
-            </Card>
-            
-            <div className="flex justify-center space-x-4 mt-8">
-              <Button
-                onClick={handleGoToHistory}
-                className="bg-formfit-blue hover:bg-formfit-blue/90"
-              >
-                Ver Histórico
-              </Button>
-              
-              <Button
-                onClick={handleGoToHome}
-                variant="outline"
-              >
-                Voltar ao Início
-              </Button>
+                <div className="text-right mt-1">
+                  <span className="text-sm font-medium">{calculateQuality()}%</span>
+                </div>
+              </div>
             </div>
           </div>
+
+          <Button
+            onClick={() => navigate('/treinos')}
+            className="w-full bg-formfit-blue hover:bg-formfit-blue/90 text-white"
+          >
+            Voltar para Treinos
+          </Button>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };

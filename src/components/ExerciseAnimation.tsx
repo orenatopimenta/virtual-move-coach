@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { exerciseConfigs } from './pose-analysis/exercise-configs';
 import { Button } from "@/components/ui/button";
@@ -10,8 +9,9 @@ interface ExerciseAnimationProps {
 }
 
 const ExerciseAnimation: React.FC<ExerciseAnimationProps> = ({ exerciseId, onComplete }) => {
+  console.log('ExerciseAnimation: exerciseId', exerciseId);
   const [loading, setLoading] = useState(true);
-  const config = exerciseConfigs[exerciseId] || exerciseConfigs.squat;
+  const config = exerciseConfigs[exerciseId] || { name: exerciseId, positioningInstructions: '', animationUrl: '' };
 
   useEffect(() => {
     // Simulate loading animation resource
@@ -24,6 +24,7 @@ const ExerciseAnimation: React.FC<ExerciseAnimationProps> = ({ exerciseId, onCom
 
   // Fallback animation using CSS if no animation URL available
   const renderFallbackAnimation = () => {
+    console.log('Fallback for:', exerciseId);
     switch (exerciseId) {
       case 'squat':
         return (
@@ -31,6 +32,15 @@ const ExerciseAnimation: React.FC<ExerciseAnimationProps> = ({ exerciseId, onCom
             <div className="mb-4 text-4xl font-bold">🏋️</div>
             <div className="animate-bounce h-20 w-20 mb-4">👤</div>
             <div className="animate-ping h-20 w-20">👤</div>
+          </div>
+        );
+      case 'leg-press':
+        return (
+          <div className="flex flex-col items-center">
+            <div className="mb-4 text-4xl font-bold">🦵</div>
+            <div className="animate-bounce h-20 w-20 mb-4">👤</div>
+            <div className="animate-pulse h-20 w-20">🦶</div>
+            <div className="text-gray-500 mt-2">Simulação de Leg Press</div>
           </div>
         );
       case 'plank':
@@ -89,7 +99,7 @@ const ExerciseAnimation: React.FC<ExerciseAnimationProps> = ({ exerciseId, onCom
           <h3 className="font-medium mb-2">Como executar:</h3>
           <ul className="text-gray-700 text-left list-disc pl-5 space-y-1">
             <li>Posicione-se frente à câmera</li>
-            <li>{config.positioningInstructions}</li>
+            <li>{config.positioningInstructions || "Afaste-se para a câmera ver o movimento completo"}</li>
             <li>Execute o movimento com controle</li>
             <li>Mantenha a postura durante todo o exercício</li>
           </ul>

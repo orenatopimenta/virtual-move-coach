@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface FeatureCardProps {
@@ -25,7 +24,7 @@ const FeaturesSection: React.FC = () => {
       <div className="formfit-container">
         <div className="text-center mb-16">
           <h2 className="formfit-heading">
-            Por que escolher o <span className="bg-gradient-to-r from-formfit-blue to-formfit-purple bg-clip-text text-transparent">FormFit AI</span>?
+            Por que escolher o <span className="bg-gradient-to-r from-formfit-blue to-formfit-purple bg-clip-text text-transparent">AI Trainer</span>?
           </h2>
           <p className="text-gray-600 text-lg max-w-3xl mx-auto">
             Nosso aplicativo usa tecnologia avançada de IA para trazer o melhor da experiência de treino personalizado para seu smartphone.
@@ -51,7 +50,7 @@ const FeaturesSection: React.FC = () => {
           <FeatureCard
             icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-repeat"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>}
             title="Contador de Repetições"
-            description="Deixe o FormFit AI contar suas repetições automaticamente enquanto você se concentra na qualidade dos movimentos."
+            description="Deixe o AI Trainer contar suas repetições automaticamente enquanto você se concentra na qualidade dos movimentos."
           />
           <FeatureCard
             icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-timer"><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/><line x1="12" x2="12" y1="14" y2="16"/><line x1="12" x2="12.01" y1="20" y2="20"/><path d="M5.37 5.37 4.3 4.3"/><path d="m18.63 5.37 1.07-1.07"/><path d="M10.42 10.42a3 3 0 1 0 4.24 4.24 3 3 0 0 0-4.24-4.24Z"/><path d="M7 12a5 5 0 0 1 5-5"/><path d="M17 12a5 5 0 0 0-5-5"/><path d="M12 17a5 5 0 0 0 5-5"/></svg>}

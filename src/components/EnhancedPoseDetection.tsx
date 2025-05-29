@@ -11,18 +11,32 @@ import { analyzePlank } from './pose-analysis/analyzePlank';
 import { calculateAngle } from './pose-analysis/utils';
 import { getExerciseConfig, checkExerciseVisibility } from './pose-analysis/exercise-configs';
 
+interface RepIndicator {
+  minAngle: number;
+  maxAngle: number;
+  executionTime: number;
+  amplitude: number;
+  upVelocity: number;
+  downVelocity: number;
+}
+
 interface EnhancedPoseDetectionProps {
   exercise: string;
   onRepetitionCount: (quality: 'good' | 'average' | 'poor') => void;
   onFeedback: (message: string) => void;
+  videoRef: React.RefObject<HTMLVideoElement>;
+  onRepIndicatorExtracted: (indicator: RepIndicator) => void;
+  stage: string;
 }
 
 const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({ 
   exercise, 
   onRepetitionCount, 
-  onFeedback 
+  onFeedback,
+  videoRef,
+  onRepIndicatorExtracted,
+  stage
 }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [isWebcamLoading, setIsWebcamLoading] = useState(true);
@@ -160,6 +174,7 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
     };
 
     const loadModel = async () => {
+      if (!isModelLoading) return;
       setIsModelLoading(true);
       
       try {
@@ -176,7 +191,6 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
         tf.env().set('WEBGL_PACK', true);
         tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
         tf.env().set('WEBGL_FLUSH_THRESHOLD', 1);
-        tf.env().set('CHECK_NUMERIC_RANGES', false);
         
         await tf.ready();
         console.log('TensorFlow.js backend initialized:', tf.getBackend());
@@ -191,10 +205,10 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
         detectorRef.current = await poseDetection.createDetector(model, detectorConfig);
         console.log('MoveNet model loaded successfully');
         setIsModelLoading(false);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading detection model:', error);
-        setLoadError('Error loading detection model. Please refresh and try again.');
-        onFeedback('Error loading detection model. Please refresh and try again.');
+        setLoadError(`Error loading detection model: ${error?.message || error}`);
+        onFeedback(`Error loading detection model: ${error?.message || error}`);
         setIsModelLoading(false);
       }
     };
@@ -223,21 +237,30 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
     // Start initialization
     initialize();
 
-    // Cleanup on unmount
+    // Cleanup function
     return () => {
+      console.log('Cleaning up EnhancedPoseDetection...');
+      
+      // Stop detection loop
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
+        requestRef.current = null;
       }
       
       // Stop webcam
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => {
+          track.stop();
+          console.log('Camera track stopped in cleanup:', track.label);
+        });
+        videoRef.current.srcObject = null;
       }
       
       // Clear any remaining timeouts
       if (debugInfoTimeoutRef.current) {
         clearTimeout(debugInfoTimeoutRef.current);
+        debugInfoTimeoutRef.current = null;
       }
     };
   }, [onFeedback]);
@@ -379,19 +402,18 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
     ctx.fillRect(0, 0, (canvas.width * timelineProgress) / 100, 4);
     
     // Draw exercise example
-    const currentExample = examples[currentExampleIndex];
-    if (currentExample) {
-      // Add example image and instruction
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(10, 10, 300, 80);
-      
-      ctx.fillStyle = '#ffffff';
-      ctx.font = "24px Arial";
-      ctx.fillText(currentExample.image, 20, 40);
-      
-      ctx.font = "14px Arial";
-      ctx.fillText(currentExample.instruction, 20, 70);
-    }
+    // const currentExample = examples[currentExampleIndex];
+    // if (currentExample) {
+    //   ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    //   ctx.fillRect(10, 10, 300, 80);
+    //   
+    //   ctx.fillStyle = '#ffffff';
+    //   ctx.font = "24px Arial";
+    //   ctx.fillText(currentExample.image, 20, 40);
+    //   
+    //   ctx.font = "14px Arial";
+    //   ctx.fillText(currentExample.instruction, 20, 70);
+    // }
     
     const keypoints = pose.keypoints;
     
@@ -574,28 +596,28 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
     });
     
     // Display detection quality indicator
-    const qualityColors = {
-      poor: '#FF0000',
-      good: '#FFFF00',
-      excellent: '#00FF00'
-    };
-    
-    // Quality indicator
-    ctx.fillStyle = qualityColors[detectionQuality];
-    ctx.font = "bold 18px Arial";
-    ctx.fillText(`Qualidade: ${detectionQuality === 'poor' ? 'Ruim' : 
-                              detectionQuality === 'good' ? 'Boa' : 'Excelente'}`, 20, 30);
+    // const qualityColors = {
+    //   poor: '#FF0000',
+    //   good: '#FFFF00',
+    //   excellent: '#00FF00'
+    // };
+    // 
+    // // Quality indicator
+    // ctx.fillStyle = qualityColors[detectionQuality];
+    // ctx.font = "bold 18px Arial";
+    // ctx.fillText(`Qualidade: ${detectionQuality === 'poor' ? 'Ruim' : 
+    //                           detectionQuality === 'good' ? 'Boa' : 'Excelente'}`, 20, 30);
     
     // Exercise detection indicator
-    if (exerciseDetected) {
-      ctx.fillStyle = 'rgba(234, 56, 76, 0.7)';
-      ctx.font = "bold 36px Arial";
-      ctx.fillText(exerciseConfig.detectionMessage, canvas.width/2 - 250, 60);
-      
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.strokeText(exerciseConfig.detectionMessage, canvas.width/2 - 250, 60);
-    }
+    // if (exerciseDetected) {
+    //   ctx.fillStyle = 'rgba(234, 56, 76, 0.7)';
+    //   ctx.font = "bold 36px Arial";
+    //   ctx.fillText(exerciseConfig.detectionMessage, canvas.width/2 - 250, 60);
+    //   
+    //   ctx.lineWidth = 2;
+    //   ctx.strokeStyle = '#FFFFFF';
+    //   ctx.strokeText(exerciseConfig.detectionMessage, canvas.width/2 - 250, 60);
+    // }
   };
   
   // Process pose data for specific exercises
@@ -645,7 +667,7 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
         analyzeSquat(keypoints, isDown, setIsDown, exerciseDetected, setExerciseDetected, 
                     detectionQuality, setDetectionQuality, goodDetectionFramesRef, frameCountRef, 
                     depthEstimateRef, movementHistoryRef, lastRepCountTimeRef, lastFeedbackTimeRef, 
-                    setExecutionQuality, onRepetitionCount, onFeedback, updateFeedbackWithDebounce);
+                    setExecutionQuality, onRepetitionCount, onFeedback, updateFeedbackWithDebounce, onRepIndicatorExtracted);
         break;
       case 'lunge':
         analyzeLunge(keypoints, isDown, setIsDown, lastRepCountTimeRef, setExecutionQuality, 
@@ -657,7 +679,7 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
         break;
       case 'curl':
         analyzeBicepsCurl(keypoints, isDown, setIsDown, lastRepCountTimeRef, setExecutionQuality, 
-                         onRepetitionCount, updateFeedbackWithDebounce, onFeedback, isElbowStable);
+                         onRepetitionCount, updateFeedbackWithDebounce, onFeedback, isElbowStable, onRepIndicatorExtracted);
         break;
       case 'plank':
         analyzePlank(keypoints, isDown, setIsDown, lastRepCountTimeRef, setExecutionQuality, 
@@ -668,7 +690,7 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
         analyzeSquat(keypoints, isDown, setIsDown, exerciseDetected, setExerciseDetected, 
                     detectionQuality, setDetectionQuality, goodDetectionFramesRef, frameCountRef, 
                     depthEstimateRef, movementHistoryRef, lastRepCountTimeRef, lastFeedbackTimeRef, 
-                    setExecutionQuality, onRepetitionCount, onFeedback, updateFeedbackWithDebounce);
+                    setExecutionQuality, onRepetitionCount, onFeedback, updateFeedbackWithDebounce, onRepIndicatorExtracted);
         break;
     }
   };
@@ -676,23 +698,19 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
   // Helper to reduce feedback frequency and prevent flashing messages
   const updateFeedbackWithDebounce = (message: string, minInterval: number) => {
     const now = Date.now();
-    
     // Only send feedback if enough time has passed since the last one
     if (now - lastFeedbackTimeRef.current > minInterval) {
       lastFeedbackTimeRef.current = now;
       onFeedback(message);
-      
       // Show a toast notification for important messages
       if (message.includes('Repetição contabilizada') || 
           message.includes('Excelente') ||
           message.includes('Série completa')) {
-        
         toast({
           title: "🏋️ " + message,
           duration: 1000,
         });
       }
-      
       // Clear any pending debug info timeouts
       if (debugInfoTimeoutRef.current) {
         clearTimeout(debugInfoTimeoutRef.current);
@@ -701,7 +719,7 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
   };
 
   return (
-    <div className="relative">
+    <div className="relative min-h-[400px] sm:min-h-[500px] w-full">
       {/* Hidden video for pose detection */}
       <video
         ref={videoRef}
@@ -762,14 +780,14 @@ const EnhancedPoseDetection: React.FC<EnhancedPoseDetectionProps> = ({
       <div className={`absolute top-4 left-4 px-4 py-2 rounded-full text-white text-base font-bold 
                       ${detectionQuality === 'poor' ? 'bg-red-500' : 
                         detectionQuality === 'good' ? 'bg-yellow-500' : 'bg-green-500'}`}>
-        Detecção: {detectionQuality === 'poor' ? 'Ruim' : 
-                 detectionQuality === 'good' ? 'Boa' : 'Excelente'}
+        <div className="text-base font-bold max-w-full break-words">Detecção: {detectionQuality === 'poor' ? 'Ruim' : 
+                 detectionQuality === 'good' ? 'Boa' : 'Excelente'}</div>
       </div>
       
       {/* Positioning instruction */}
       {detectionQuality === 'poor' && (
         <div className="absolute top-4 right-4 bg-blue-500 px-4 py-2 rounded-lg text-white text-sm font-bold animate-bounce">
-          {exerciseConfig.positioningInstructions}
+          <div className="text-sm max-w-full break-words">{exerciseConfig.positioningInstructions}</div>
         </div>
       )}
     </div>

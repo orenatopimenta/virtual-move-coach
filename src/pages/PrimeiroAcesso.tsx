@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import FormFitHeader from '@/components/FormFitHeader';
@@ -7,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/lib/supabaseClient';
+import { ArrowLeft } from 'lucide-react';
 
 const PrimeiroAcesso: React.FC = () => {
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -17,7 +17,7 @@ const PrimeiroAcesso: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
@@ -31,16 +31,25 @@ const PrimeiroAcesso: React.FC = () => {
     
     setIsLoading(true);
     
-    // Simular cadastro
-    setTimeout(() => {
-      setIsLoading(false);
-      localStorage.setItem('userRegistered', 'true');
+    // Cadastro real com Supabase
+    const { error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    setIsLoading(false);
+    if (error) {
       toast({
-        title: "Cadastro realizado!",
-        description: "Agora você pode fazer login",
+        title: "Erro ao cadastrar!",
+        description: error.message,
+        variant: "destructive"
       });
-      navigate('/login');
-    }, 1000);
+      return;
+    }
+    toast({
+      title: "Cadastro realizado!",
+      description: "Agora você pode fazer login.",
+    });
+    navigate('/login');
   };
   
   return (
@@ -48,20 +57,19 @@ const PrimeiroAcesso: React.FC = () => {
       <FormFitHeader />
       <main className="flex-grow flex items-center justify-center py-8">
         <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-          <h1 className="text-2xl font-bold text-center mb-6">Primeiro Acesso</h1>
+          <div className="mb-4 flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </div>
+          <h1 className="formfit-heading text-center flex-1">Primeiro Acesso</h1>
           
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome completo</Label>
-              <Input
-                id="name"
-                placeholder="Seu nome"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -103,7 +111,7 @@ const PrimeiroAcesso: React.FC = () => {
               className="w-full bg-green-600 hover:bg-green-700"
               disabled={isLoading}
             >
-              {isLoading ? 'Criando conta...' : 'Criar conta'}
+              {isLoading ? 'Cadastrando...' : 'Cadastrar'}
             </Button>
           </form>
           

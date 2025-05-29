@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const Footer: React.FC = () => {
@@ -9,7 +8,7 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center text-white font-bold text-xl">F</div>
-              <h2 className="text-xl font-bold">FormFit AI</h2>
+              <h2 className="text-xl font-bold">AI Trainer</h2>
             </div>
             <p className="text-gray-400 mb-4">
               Transforme seu smartphone em um personal trainer inteligente com nossa tecnologia de IA.
@@ -68,7 +67,7 @@ const Footer: React.FC = () => {
         
         <div className="mt-12 pt-8 border-t border-gray-800">
           <p className="text-gray-400 text-sm text-center">
-            &copy; 2025 FormFit AI. Todos os direitos reservados.
+            &copy; 2025 AI Trainer. Todos os direitos reservados.
           </p>
         </div>
       </div>
