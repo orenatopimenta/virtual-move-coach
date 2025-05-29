@@ -66,7 +66,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
             facingMode: 'user',
             width: { ideal: 320 }, // Reduzir para melhorar performance
             height: { ideal: 240 },
-            frameRate: { ideal: 5, max: 7 }
+            frameRate: { ideal: 3, max: 5 }
           },
           audio: false
         });
@@ -192,14 +192,14 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
           clearTimeout(requestRef.current);
         }
         requestRef.current = requestAnimationFrame(() => detectPose());
-      }, 200); // Reduzir para 15 FPS para melhor performance
+      }, 333); // Reduzir para 15 FPS para melhor performance
     } catch (error) {
       console.error('Erro durante a detecção de pose:', error);
       onFeedback('Erro na detecção. Tente reiniciar o exercício.');
       // Attempt to restart detection after a short delay
       setTimeout(() => {
         requestRef.current = requestAnimationFrame(() => detectPose());
-      }, 2000);
+      }, 333);
     }
   };
   
