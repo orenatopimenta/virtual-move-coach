@@ -26,7 +26,7 @@ import TreinoPersonalizadoExecucao from './pages/ExperienciaGuiada/TreinoPersona
 import TreinoIA from './pages/TreinoIA';
 import Perfil from './pages/Perfil';
 import ParametrosTreino from './pages/ParametrosTreino';
-
+import ExerciseModelTraining from './pages/ExerciseModelTraining';
 import { Toaster } from '@/components/ui/toaster';
 import './App.css';
 
@@ -63,6 +63,9 @@ function App() {
         
         {/* Treino */}
         <Route path="/workout" element={<Workout />} />
+
+        {/* Modelo de Exercícios */}
+        <Route path="/exercise-models" element={<ExerciseModelTraining />} />
 
         {/* Fluxo de Onboarding (existente) */}
         <Route path="/onboarding/level" element={<LevelSelection />} />
