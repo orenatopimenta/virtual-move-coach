@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
-import '@tensorflow/tfjs-core';
+import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
 import { getExerciseConfig } from './pose-analysis/exercise-configs';
 import { calculateAngle } from './pose-analysis/utils';
@@ -56,30 +56,29 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   }, [exercise, onFeedback]);
 
   useEffect(() => {
+    let isMounted = true;
+    let animationId: number | null = null;
+
     const setupCamera = async () => {
       if (!videoRef.current) return;
-
       try {
-        console.log('Tentando acessar a câmera...');
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
+          video: {
             facingMode: 'user',
+<<<<<<< Updated upstream
             width: { ideal: 192 }, // Reduzir para melhorar performance
             height: { ideal: 192 },
             frameRate: { ideal: 3, max: 5 }
+=======
+            width: { ideal: 480 },
+            height: { ideal: 360 }
+>>>>>>> Stashed changes
           },
           audio: false
         });
-        
         videoRef.current.srcObject = stream;
-        
-        return new Promise<void>((resolve) => {
-          if (videoRef.current) {
-            videoRef.current.onloadedmetadata = () => {
-              console.log('Câmera configurada com sucesso');
-              resolve();
-            };
-          }
+        await new Promise(resolve => {
+          videoRef.current!.onloadedmetadata = () => resolve(null);
         });
       } catch (error) {
         console.error('Erro ao acessar a câmera:', error);
@@ -90,39 +89,16 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
 
     const loadModel = async () => {
       setIsModelLoading(true);
-      
       try {
-        console.log('Inicializando o backend TensorFlow.js...');
-        const tf = await import('@tensorflow/tfjs-core');
         await import('@tensorflow/tfjs-backend-webgl');
-        
-        // Configurações otimizadas para melhor performance
         await tf.setBackend('webgl');
-        const backend = tf.getBackend();
-        if (backend === 'webgl') {
-          // Removendo a linha problemática que tenta acessar getGPGPUContext
-          // Configurações alternativas para otimização
-          tf.env().set('WEBGL_CPU_FORWARD', false);
-          tf.env().set('WEBGL_PACK', true);
-          tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
-          tf.env().set('WEBGL_FLUSH_THRESHOLD', 1);
-          tf.env().set('CHECK_NUMERIC_RANGES', false);
-        }
-        
         await tf.ready();
-        console.log('Backend TensorFlow.js inicializado:', tf.getBackend());
-        
-        console.log('Carregando modelo MoveNet...');
-        // Use MoveNet - a lightweight and fast pose detection model
         const model = poseDetection.SupportedModels.MoveNet;
         const detectorConfig = {
-          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING, // Usar modelo LIGHTNING para maior velocidade
+          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
           enableSmoothing: true
         };
-        
-        // Initialize the detector
         detectorRef.current = await poseDetection.createDetector(model, detectorConfig);
-        console.log('Modelo MoveNet carregado com sucesso');
         setIsModelLoading(false);
       } catch (error) {
         console.error('Erro ao carregar o modelo de detecção:', error);
@@ -132,26 +108,55 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
       }
     };
 
-    const initialize = async () => {
+    const detectPose = async () => {
+      if (!detectorRef.current || !videoRef.current || !canvasRef.current) return;
+      if (videoRef.current.readyState < 2) {
+        animationId = requestAnimationFrame(detectPose);
+        return;
+      }
+      // Ajusta o canvas para o tamanho do vídeo
+      canvasRef.current.width = videoRef.current.videoWidth;
+      canvasRef.current.height = videoRef.current.videoHeight;
+      const ctx = canvasRef.current.getContext('2d');
+      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      ctx?.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
       try {
-        await setupCamera();
-        setIsWebcamLoading(false);
-        await loadModel();
-        
-        if (videoRef.current && canvasRef.current && detectorRef.current) {
-          console.log('Iniciando detecção de poses');
-          startDetection();
+        const poses = await detectorRef.current.estimatePoses(videoRef.current);
+        if (poses.length > 0 && poses[0].keypoints) {
+          // desenha keypoints
+          for (const kp of poses[0].keypoints) {
+            if (kp.score > 0.4) {
+              ctx?.beginPath();
+              ctx?.arc(kp.x, kp.y, 6, 0, 2 * Math.PI);
+              ctx!.fillStyle = 'red';
+              ctx?.fill();
+            }
+          }
+          keypointsRef.current = poses[0].keypoints;
+          processPoseForExercise(poses[0].keypoints);
         }
       } catch (error) {
-        console.error('Erro durante a inicialização:', error);
-        setLoadError('Ocorreu um erro na inicialização. Tente novamente.');
-        onFeedback('Ocorreu um erro na inicialização. Tente novamente.');
+        console.error('Erro durante a detecção de pose:', error);
+        onFeedback('Erro na detecção. Tente reiniciar o exercício.');
+      }
+      await tf.nextFrame();
+      if (isMounted) animationId = requestAnimationFrame(detectPose);
+    };
+
+    const initialize = async () => {
+      await setupCamera();
+      setIsWebcamLoading(false);
+      await loadModel();
+      if (videoRef.current && canvasRef.current && detectorRef.current) {
+        detectPose();
       }
     };
 
     initialize();
 
     return () => {
+      isMounted = false;
+      if (animationId) cancelAnimationFrame(animationId);
       if (requestRef.current) {
         if (typeof requestRef.current === 'number') {
           cancelAnimationFrame(requestRef.current);
@@ -159,8 +164,6 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
           clearTimeout(requestRef.current);
         }
       }
-      
-      // Stop webcam
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
@@ -168,6 +171,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
     };
   }, [onFeedback]);
 
+<<<<<<< Updated upstream
   const detectPose = async () => {
     if (!detectorRef.current || !videoRef.current || !canvasRef.current) return;
     
@@ -214,6 +218,8 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
     requestRef.current = requestAnimationFrame(() => detectPose());
   };
   
+=======
+>>>>>>> Stashed changes
   const drawPose = (pose: poseDetection.Pose, canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
     if (!ctx || !videoRef.current) return;

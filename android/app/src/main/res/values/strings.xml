@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">posture-app</string>
+    <string name="title_activity_main">posture-app</string>
+    <string name="package_name">com.seuapp.posture</string>
+    <string name="custom_url_scheme">com.seuapp.posture</string>
+</resources>
