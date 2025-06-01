@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
-import '@tensorflow/tfjs-backend-wasm';
 import { getExerciseConfig } from './pose-analysis/exercise-configs';
 import { calculateAngle } from './pose-analysis/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +38,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
   
   const { toast } = useToast();
   
-  const [backend, setBackend] = useState<'webgl' | 'wasm'>('webgl');
+  const [backend, setBackend] = useState<'webgl'>('webgl');
   const [backendLoading, setBackendLoading] = useState(false);
   
   // Set the exercise configuration
@@ -59,102 +58,101 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
     onFeedback(config.positioningInstructions || 'Posicione-se em frente à câmera');
   }, [exercise, onFeedback]);
 
-  useEffect(() => {
-    let isMounted = true;
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const setupCamera = async () => {
-      if (!videoRef.current) return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'user',
-            width: { ideal: 320 },
-            height: { ideal: 240 }
-          },
-          audio: false
-        });
-        videoRef.current.srcObject = stream;
-        await new Promise(resolve => {
-          videoRef.current!.onloadedmetadata = () => resolve(null);
-        });
-      } catch (error) {
-        console.error('Erro ao acessar a câmera:', error);
-        setLoadError('Erro ao acessar câmera. Verifique suas permissões.');
-        onFeedback('Erro ao acessar câmera. Verifique suas permissões.');
-      }
-    };
-
-    const loadModel = async () => {
-      setIsModelLoading(true);
-      try {
-        setBackendLoading(true);
-        await tf.setBackend(backend);
-        await tf.ready();
-        setBackendLoading(false);
-        const model = poseDetection.SupportedModels.MoveNet;
-        const detectorConfig = {
-          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-          enableSmoothing: true
-        };
-        detectorRef.current = await poseDetection.createDetector(model, detectorConfig);
-        setIsModelLoading(false);
-      } catch (error) {
-        console.error('Erro ao carregar o modelo de detecção:', error);
-        setLoadError('Erro ao carregar o modelo de detecção. Tente novamente.');
-        onFeedback('Erro ao carregar o modelo de detecção. Tente novamente.');
-        setIsModelLoading(false);
-        setBackendLoading(false);
-      }
-    };
-
-    const detectPose = async () => {
-      if (!detectorRef.current || !videoRef.current || !canvasRef.current) return;
-      if (videoRef.current.readyState < 2) {
-        return;
-      }
-      // Ajusta o canvas para o tamanho do vídeo
-      canvasRef.current.width = videoRef.current.videoWidth;
-      canvasRef.current.height = videoRef.current.videoHeight;
-      const ctx = canvasRef.current.getContext('2d');
-      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      ctx?.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-      try {
-        const poses = await detectorRef.current.estimatePoses(videoRef.current);
-        if (poses.length > 0 && poses[0].keypoints) {
-          // desenha keypoints
-          for (const kp of poses[0].keypoints) {
-            if (kp.score > 0.4) {
-              ctx?.beginPath();
-              ctx?.arc(kp.x, kp.y, 6, 0, 2 * Math.PI);
-              ctx!.fillStyle = 'red';
-              ctx?.fill();
-            }
+  const setupCamera = async () => {
+    if (!videoRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 480 },
+          height: { ideal: 360 }
+        },
+        audio: false
+      });
+      videoRef.current.srcObject = stream;
+      await new Promise(resolve => {
+        videoRef.current!.onloadedmetadata = () => resolve(null);
+      });
+    } catch (error) {
+      console.error('Erro ao acessar a câmera:', error);
+      setLoadError('Erro ao acessar câmera. Verifique suas permissões.');
+      onFeedback('Erro ao acessar câmera. Verifique suas permissões.');
+    }
+  };
+  
+  const loadModel = async () => {
+    setIsModelLoading(true);
+    try {
+      setBackendLoading(true);
+      await tf.setBackend('webgl');
+      await tf.ready();
+      setBackendLoading(false);
+      const model = poseDetection.SupportedModels.MoveNet;
+      const detectorConfig = {
+        modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+        enableSmoothing: true,
+      };
+      detectorRef.current = await poseDetection.createDetector(model, detectorConfig);
+      setIsModelLoading(false);
+    } catch (error) {
+      console.error('Erro ao carregar o modelo de detecção:', error);
+      setLoadError('Erro ao carregar o modelo de detecção. Tente novamente.');
+      onFeedback('Erro ao carregar o modelo de detecção. Tente novamente.');
+      setIsModelLoading(false);
+      setBackendLoading(false);
+    }
+  };
+  
+  const detectPose = async () => {
+    if (!detectorRef.current || !videoRef.current || !canvasRef.current) return;
+    if (videoRef.current.readyState < 2) {
+      return;
+    }
+    // Ajusta o canvas para o tamanho do vídeo
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+    const ctx = canvasRef.current.getContext('2d');
+    ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    ctx?.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+    try {
+      const poses = await detectorRef.current.estimatePoses(videoRef.current);
+      if (poses.length > 0 && poses[0].keypoints) {
+        // desenha keypoints
+        for (const kp of poses[0].keypoints) {
+          if (kp.score > 0.4) {
+            ctx?.beginPath();
+            ctx?.arc(kp.x, kp.y, 6, 0, 2 * Math.PI);
+            ctx!.fillStyle = 'red';
+            ctx?.fill();
           }
-          keypointsRef.current = poses[0].keypoints;
-          processPoseForExercise(poses[0].keypoints);
         }
-      } catch (error) {
-        console.error('Erro durante a detecção de pose:', error);
-        onFeedback('Erro na detecção. Tente reiniciar o exercício.');
+        keypointsRef.current = poses[0].keypoints;
+        processPoseForExercise(poses[0].keypoints);
       }
-      await tf.nextFrame();
-    };
+    } catch (error) {
+      console.error('Erro durante a detecção de pose:', error);
+      onFeedback('Erro na detecção. Tente reiniciar o exercício.');
+    }
+    await tf.nextFrame();
+  };
+  
+  const initialize = async () => {
+    await setupCamera();
+    setIsWebcamLoading(false);
+    await loadModel();
+    if (videoRef.current && canvasRef.current && detectorRef.current) {
+      const renderLoop = async () => {
+        await detectPose();
+        requestRef.current = requestAnimationFrame(renderLoop);
+      };
+      renderLoop();
+    }
+  };
 
-    const initialize = async () => {
-      await setupCamera();
-      setIsWebcamLoading(false);
-      await loadModel();
-      if (videoRef.current && canvasRef.current && detectorRef.current) {
-        intervalId = setInterval(detectPose, 200); // 200ms = 5fps
-      }
-    };
-
+  useEffect(() => {
     initialize();
 
     return () => {
-      isMounted = false;
-      if (intervalId) clearInterval(intervalId);
       if (requestRef.current) {
         if (typeof requestRef.current === 'number') {
           cancelAnimationFrame(requestRef.current);
@@ -167,7 +165,7 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [onFeedback, backend]);
+  }, [onFeedback]);
 
   const drawPose = (pose: poseDetection.Pose, canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
@@ -636,11 +634,6 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
           onClick={() => setBackend('webgl')}
           disabled={backend === 'webgl' || backendLoading}
         >webgl</button>
-        <button
-          className={`px-2 py-1 rounded text-xs font-bold ${backend === 'wasm' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => setBackend('wasm')}
-          disabled={backend === 'wasm' || backendLoading}
-        >wasm</button>
         {backendLoading && <span className="ml-2 text-xs text-gray-500">Carregando backend...</span>}
       </div>
       {/* Hidden video for pose detection */}
@@ -706,6 +699,12 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
         {detectionQuality === 'poor' ? 'Detecção Ruim' : 
         detectionQuality === 'good' ? 'Detecção Boa' : 'Detecção Excelente'}
       </div>
+
+      <canvas 
+        id="output"
+        className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+        style={{height: '100%', width: '100%'}}
+      />
     </div>
   );
 };
