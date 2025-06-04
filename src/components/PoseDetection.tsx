@@ -186,6 +186,229 @@ const PoseDetection: React.FC<PoseDetectionProps> = ({ exercise, onRepetitionCou
     return () => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 480 },
+          height: { ideal: 360 }
+        },
+        audio: false
+      });
+      videoRef.current.srcObject = stream;
+      await new Promise(resolve => {
+        videoRef.current!.onloadedmetadata = () => resolve(null);
+      });
+    } catch (error) {
+      console.error('Erro ao acessar a câmera:', error);
+      setLoadError('Erro ao acessar câmera. Verifique suas permissões.');
+      onFeedback('Erro ao acessar câmera. Verifique suas permissões.');
+    }
+  };
+  
+  const loadModel = async () => {
+    setIsModelLoading(true);
+    try {
+      setBackendLoading(true);
+      await tf.setBackend('webgl');
+      await tf.ready();
+      setBackendLoading(false);
+      const model = poseDetection.SupportedModels.MoveNet;
+      const detectorConfig = {
+        modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+        enableSmoothing: true,
+      };
+      detectorRef.current = await poseDetection.createDetector(model, detectorConfig);
+      setIsModelLoading(false);
+    } catch (error) {
+      console.error('Erro ao carregar o modelo de detecção:', error);
+      setLoadError('Erro ao carregar o modelo de detecção. Tente novamente.');
+      onFeedback('Erro ao carregar o modelo de detecção. Tente novamente.');
+      setIsModelLoading(false);
+      setBackendLoading(false);
+    }
+  };
+  
+  const detectPose = async () => {
+    if (!detectorRef.current || !videoRef.current || !canvasRef.current) return;
+    if (videoRef.current.readyState < 2) {
+      return;
+    }
+    // Ajusta o canvas para o tamanho do vídeo
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+    const ctx = canvasRef.current.getContext('2d');
+    ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    ctx?.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+    try {
+      const poses = await detectorRef.current.estimatePoses(videoRef.current);
+      if (poses.length > 0 && poses[0].keypoints) {
+        // desenha keypoints
+        for (const kp of poses[0].keypoints) {
+          if (kp.score > 0.4) {
+            ctx?.beginPath();
+            ctx?.arc(kp.x, kp.y, 6, 0, 2 * Math.PI);
+            ctx!.fillStyle = 'red';
+            ctx?.fill();
+          }
+        }
+        keypointsRef.current = poses[0].keypoints;
+        processPoseForExercise(poses[0].keypoints);
+      }
+    } catch (error) {
+      console.error('Erro durante a detecção de pose:', error);
+      onFeedback('Erro na detecção. Tente reiniciar o exercício.');
+    }
+    await tf.nextFrame();
+  };
+  
+  const initialize = async () => {
+    await setupCamera();
+    setIsWebcamLoading(false);
+    await loadModel();
+    if (videoRef.current && canvasRef.current && detectorRef.current) {
+      const renderLoop = async () => {
+        await detectPose();
+        requestRef.current = requestAnimationFrame(renderLoop);
+      };
+      renderLoop();
+    }
+  };
+
+  useEffect(() => {
+    initialize();
+
+    return () => {
+      if (requestRef.current) {
+        if (typeof requestRef.current === 'number') {
+          cancelAnimationFrame(requestRef.current);
+        } else {
+          clearTimeout(requestRef.current);
+        }
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: 'user',
+          width: { ideal: 320 },
+          height: { ideal: 240 }
+        }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoRef.current.srcObject = stream;
+      await new Promise(resolve => {
+        videoRef.current!.onloadedmetadata = () => resolve(null);
+      });
+    } catch (error) {
+      console.error('Erro ao acessar a câmera:', error);
+      setLoadError('Erro ao acessar câmera. Verifique suas permissões.');
+      onFeedback('Erro ao acessar câmera. Verifique suas permissões.');
+    }
+  };
+  
+  const initializeWorker = () => {
+    if (typeof Window === 'undefined') return;
+    
+    try {
+      workerRef.current = new Worker(new URL('../workers/poseDetection.worker.ts', import.meta.url), {
+        type: 'module'
+      });
+
+      workerRef.current.onmessage = (e) => {
+        const { type, success, poses, error } = e.data;
+
+        switch (type) {
+          case 'INIT_COMPLETE':
+            setIsModelLoading(!success);
+            if (!success) {
+              setLoadError('Erro ao carregar o modelo de detecção. Tente novamente.');
+              onFeedback('Erro ao carregar o modelo de detecção. Tente novamente.');
+            }
+            break;
+
+          case 'DETECTION_RESULT':
+            if (poses && poses.length > 0) {
+              keypointsRef.current = poses[0].keypoints;
+              processPoseForExercise(poses[0].keypoints);
+              
+              // Draw keypoints on canvas
+              if (canvasRef.current) {
+                const ctx = canvasRef.current.getContext('2d');
+                if (ctx) {
+                  // Draw keypoints
+                  for (const kp of poses[0].keypoints) {
+                    if (kp.score > 0.4) {
+                      ctx.beginPath();
+                      ctx.arc(kp.x, kp.y, 6, 0, 2 * Math.PI);
+                      ctx.fillStyle = 'red';
+                      ctx.fill();
+                    }
+                  }
+                }
+              }
+            }
+            break;
+
+          case 'ERROR':
+            console.error('Worker error:', error);
+            onFeedback('Erro na detecção. Tente reiniciar o exercício.');
+            break;
+        }
+      };
+
+      // Initialize the model in the worker
+      workerRef.current.postMessage({ type: 'INIT' });
+    } catch (error) {
+      console.error('Failed to initialize worker:', error);
+      setLoadError('Erro ao inicializar o processamento. Tente novamente.');
+      onFeedback('Erro ao inicializar o processamento. Tente novamente.');
+    }
+  };
+
+  const detectPose = async () => {
+    if (!workerRef.current || !videoRef.current || !canvasRef.current) return;
+    if (videoRef.current.readyState < 2) return;
+
+    // Adjust canvas size to match video
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+
+    // Draw video frame
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+
+    // Get image data for pose detection
+    const imageData = ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+    if (imageData) {
+      workerRef.current.postMessage({
+        type: 'DETECT',
+        data: { imageData }
+      }, [imageData.data.buffer]); // Transfer the buffer for better performance
+    }
+  };
+
+  useEffect(() => {
+    let animationFrameId: number;
+    
+    const renderLoop = () => {
+      detectPose();
+      animationFrameId = requestAnimationFrame(renderLoop);
+    };
+
+    initializeWorker();
+    setupCamera();
+    setIsWebcamLoading(false);
+
+    if (videoRef.current && canvasRef.current) {
+      renderLoop();
+    }
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+
       }
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
