@@ -1,128 +1,110 @@
+import React, { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { BarChart2, X } from 'lucide-react';
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-
-interface DashboardProps {
-  elapsedTime: number;
-  repStats: {
-    total: number;
-    good: number;
-    average: number;
-    poor: number;
-  };
-  series: number;
+interface WorkoutDashboardProps {
+  count: number;
+  timer: number;
+  feedback: string;
+  poseFeedback: string;
+  isPaused: boolean;
+  showStats: boolean;
+  onShowStats: () => void;
 }
 
-const WorkoutDashboard: React.FC<DashboardProps> = ({ elapsedTime, repStats, series }) => {
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+const WorkoutDashboard: React.FC<WorkoutDashboardProps> = ({
+  count,
+  timer,
+  feedback,
+  poseFeedback,
+  isPaused,
+  showStats,
+  onShowStats
+}) => {
+  // Memoized formatted time
+  const formattedTime = useMemo(() => {
+    const minutes = Math.floor(timer / 60);
+    const seconds = timer % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }, [timer]);
 
-  // Calculate percentages for the performance chart
-  const goodPercentage = repStats.total > 0 ? (repStats.good / repStats.total) * 100 : 0;
-  const averagePercentage = repStats.total > 0 ? (repStats.average / repStats.total) * 100 : 0;
-  const poorPercentage = repStats.total > 0 ? (repStats.poor / repStats.total) * 100 : 0;
+  // Memoized stats panel
+  const statsPanel = useMemo(() => (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold">Estatísticas do Treino</h3>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onShowStats}
+          className="hover:bg-gray-100"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-500">Tempo Total</p>
+          <p className="text-2xl font-bold">{formattedTime}</p>
+        </div>
+        
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-500">Repetições</p>
+          <p className="text-2xl font-bold">{count}</p>
+        </div>
+      </div>
+    </div>
+  ), [formattedTime, count, onShowStats]);
+
+  // Memoized feedback panel
+  const feedbackPanel = useMemo(() => (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-bold mb-4">Feedback</h3>
+      <div className="space-y-4">
+        <div>
+          <p className="text-sm text-gray-500 mb-1">Status do Exercício</p>
+          <p className={`text-lg ${isPaused ? 'text-yellow-500' : 'text-green-500'}`}>
+            {isPaused ? 'Pausado' : 'Em Progresso'}
+          </p>
+        </div>
+        
+        {poseFeedback && (
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Feedback da Pose</p>
+            <p className="text-lg">{poseFeedback}</p>
+          </div>
+        )}
+        
+        {feedback && (
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Feedback Geral</p>
+            <p className="text-lg">{feedback}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  ), [isPaused, poseFeedback, feedback]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Tempo de Treino</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatTime(elapsedTime)}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Séries Completadas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{series}/3</div>
-            <Progress 
-              value={series * 33.33} 
-              className="h-2 mt-2"
-            />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Repetições</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{repStats.total}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Qualidade das Repetições</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="h-4 w-4 rounded-full bg-green-500 mr-2"></div>
-                <span>Boa execução</span>
-              </div>
-              <span className="font-medium">{repStats.good} ({Math.round(goodPercentage)}%)</span>
-            </div>
-            <Progress value={goodPercentage} className="h-2 bg-gray-200" indicatorClassName="bg-green-500" />
+    <div className="space-y-4">
+      {showStats ? statsPanel : (
+        <div className="flex justify-between items-center">
+          <div className="text-2xl font-bold">
+            {formattedTime}
           </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="h-4 w-4 rounded-full bg-yellow-500 mr-2"></div>
-                <span>Execução razoável</span>
-              </div>
-              <span className="font-medium">{repStats.average} ({Math.round(averagePercentage)}%)</span>
-            </div>
-            <Progress value={averagePercentage} className="h-2 bg-gray-200" indicatorClassName="bg-yellow-500" />
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="h-4 w-4 rounded-full bg-red-500 mr-2"></div>
-                <span>Execução a melhorar</span>
-              </div>
-              <span className="font-medium">{repStats.poor} ({Math.round(poorPercentage)}%)</span>
-            </div>
-            <Progress value={poorPercentage} className="h-2 bg-gray-200" indicatorClassName="bg-red-500" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Linha do Tempo do Treino</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-              {/* Timeline markers */}
-              <div className="flex h-full">
-                <div className="bg-green-500 h-full" style={{ width: `${goodPercentage}%` }}></div>
-                <div className="bg-yellow-500 h-full" style={{ width: `${averagePercentage}%` }}></div>
-                <div className="bg-red-500 h-full" style={{ width: `${poorPercentage}%` }}></div>
-              </div>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Início</span>
-              <span>{formatTime(Math.floor(elapsedTime / 2))}</span>
-              <span>Final</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <Button
+            variant="outline"
+            onClick={onShowStats}
+            className="flex items-center gap-2"
+          >
+            <BarChart2 className="h-5 w-5" />
+            Ver Estatísticas
+          </Button>
+        </div>
+      )}
+      
+      {feedbackPanel}
     </div>
   );
 };

@@ -1,69 +1,85 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BicepsFlexed, Dumbbell } from 'lucide-react';
-import { User } from 'lucide-react';  // Replacing 'body' with 'User' icon
-
-interface ExerciseOption {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-}
+import React, { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dumbbell, Heart, Activity } from 'lucide-react';
 
 interface ExerciseSelectorProps {
-  onSelectExercise: (exercise: string) => void;
+  onSelect: (exercise: string) => void;
 }
 
-const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({ onSelectExercise }) => {
-  const exercises: ExerciseOption[] = [
-    {
-      id: 'squat',
-      name: 'Agachamento',
-      description: 'Posicione seus pés na largura dos ombros e agache mantendo a postura reta.',
-      icon: <User className="h-12 w-12 text-formfit-blue" />
-    },
-    {
-      id: 'afundo',
-      name: 'Avanço',
-      description: 'Dê um passo à frente e agache, mantendo o tronco ereto.',
-      icon: <User className="h-12 w-12 text-formfit-blue" />
-    },
-    {
-      id: 'push-up',
-      name: 'Flexão de Braço',
-      description: 'Mantenha o corpo alinhado e dobre os cotovelos para descer.',
-      icon: <BicepsFlexed className="h-12 w-12 text-formfit-purple" />
-    },
-    {
-      id: 'biceps-curl',
-      name: 'Rosca Bíceps',
-      description: 'Segure pesos leves e dobre os cotovelos para trabalhar os bíceps.',
-      icon: <Dumbbell className="h-12 w-12 text-formfit-pink" />
-    }
-  ];
+const exercises = [
+  {
+    id: 'squat',
+    name: 'Agachamento',
+    icon: Dumbbell,
+    description: 'Exercício para fortalecer pernas e glúteos',
+    category: 'Força'
+  },
+  {
+    id: 'pushup',
+    name: 'Flexão',
+    icon: Activity,
+    description: 'Exercício para fortalecer peito, ombros e tríceps',
+    category: 'Força'
+  },
+  {
+    id: 'bicepcurl',
+    name: 'Rosca Bíceps',
+    icon: Dumbbell,
+    description: 'Exercício para fortalecer bíceps',
+    category: 'Força'
+  },
+  {
+    id: 'plank',
+    name: 'Prancha',
+    icon: Activity,
+    description: 'Exercício para fortalecer core e abdômen',
+    category: 'Core'
+  },
+  {
+    id: 'lunge',
+    name: 'Afundo',
+    icon: Activity,
+    description: 'Exercício para fortalecer pernas e equilíbrio',
+    category: 'Força'
+  }
+];
+
+const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({ onSelect }) => {
+  // Memoized exercise cards
+  const exerciseCards = useMemo(() => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {exercises.map((exercise) => {
+        const Icon = exercise.icon;
+        return (
+          <Button
+            key={exercise.id}
+            variant="outline"
+            className="h-auto p-4 flex flex-col items-start space-y-2 hover:bg-gray-50"
+            onClick={() => onSelect(exercise.id)}
+          >
+            <div className="flex items-center space-x-2">
+              <Icon className="h-5 w-5" />
+              <span className="font-medium">{exercise.name}</span>
+            </div>
+            <p className="text-sm text-gray-500 text-left">{exercise.description}</p>
+            <span className="text-xs text-gray-400">{exercise.category}</span>
+          </Button>
+        );
+      })}
+    </div>
+  ), [onSelect]);
 
   return (
-    <div className="space-y-6">
-      <h2 className="formfit-subheading text-center">Escolha um exercício para começar</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {exercises.map((exercise) => (
-          <Card 
-            key={exercise.id}
-            className="cursor-pointer hover:shadow-lg transition-shadow duration-300"
-            onClick={() => onSelectExercise(exercise.id)}
-          >
-            <CardHeader className="flex flex-col items-center">
-              {exercise.icon}
-              <CardTitle className="mt-4">{exercise.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription className="text-center">
-                {exercise.description}
-              </CardDescription>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Selecione um Exercício</h2>
+        <div className="flex items-center space-x-2">
+          <Heart className="h-5 w-5 text-red-500" />
+          <span className="text-sm text-gray-500">Exercícios Recomendados</span>
+        </div>
       </div>
+      
+      {exerciseCards}
     </div>
   );
 };
